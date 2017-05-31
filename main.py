@@ -10,15 +10,11 @@ def getAction(tfprob, env):
 	# tfprob and y should match up.
 	# tfprob [1.] should give action = 0, y = [1]
 	# tfprob [0.] should give action = 1, y = [0]
-	pvals = np.append(tfprob, 1-np.sum(tfprob))
 	# TODO Change from np.random.multinomial, which is very slow.
-	try:
-		y = np.random.multinomial(n=1, pvals=pvals)[0:-1]
-	except ValueError:
-		print("pvals summed to greater than 1! pvals: ",pvals)
-		raise ValueError
+	pvals = tfprob[0]
+	y = np.random.multinomial(n=1, pvals=pvals)
 	if env == 'cartpole':
-		action = 1 if y == np.array([0]) else 0
+		action = 1 if (y == np.array([0,1])).all() else 0
 	elif env == 'epidemic':
 		try:
 			action = np.asscalar(np.where(y == 1)[0][0])
@@ -46,13 +42,13 @@ def main(argv):
 		# Test parameters - gets reward by simply choosing initially infected host (1 in 4 chance). Should be easy to learn.
 		env = Epidemic(gridLength=2, epsilon=0, beta=0, CToI=0, timeRemaining=1, rewardForAnyNonI=True)
 		D = env.nHosts
-		nMinus1Actions = env.nHosts - 1
+		nActions = env.nHosts
 	elif environment == 'cartpole':
 		# Cartpole version.
 		import gym
 		env = gym.make('CartPole-v0')
 		D = 4 # input dimensionality
-		nMinus1Actions = 1
+		nActions = 2
 	else:
 		raise ValueError("--env must be epidemic or cartpole.")
 
@@ -70,21 +66,20 @@ def main(argv):
 	W1 = tf.get_variable("W1", shape=[D, H],
 			   initializer=tf.contrib.layers.xavier_initializer())
 	layer1 = tf.nn.relu(tf.matmul(observations,W1))
-	W2 = tf.get_variable("W2", shape=[H, nMinus1Actions],
+	W2 = tf.get_variable("W2", shape=[H, nActions],
 			   initializer=tf.contrib.layers.xavier_initializer())
 	score = tf.matmul(layer1,W2)
-	probability = tf.nn.sigmoid(score)
+	# TODO sigmoid doesn't make sense if length of score is longer than 1. Can't just change to softmax because that only makes sense if length of score is same as actual number of actions.
+	probability = tf.nn.softmax(score)
 
 	#From here we define the parts of the network needed for learning a good policy.
 	tvars = tf.trainable_variables()
-	input_y = tf.placeholder(tf.float32,[None,1], name="input_y")
+	input_y = tf.placeholder(tf.float32,[None,nActions], name="input_y")
 	advantages = tf.placeholder(tf.float32,name="reward_signal")
 
 	# The loss function. This sends the weights in the direction of making actions
 	# that gave good advantage (reward over time) more likely, and actions that didn't less likely.
 	# Modified version of original; this one has high likelihood when input_y and probability match up.
-	# 1 - input_y corresponds to the last action.
-	# 1 - probability corresponds to the last action.
 	loglik = tf.log(input_y*probability + (1 - input_y)*(1 - probability))
 	loss = -tf.reduce_mean(loglik * advantages)
 	newGrads = tf.gradients(loss,tvars)
@@ -124,7 +119,6 @@ def main(argv):
 		rendering = False
 		sess.run(init)
 		observation = env.reset() # Obtain an initial observation of the environment
-		print(observation)
 
 		# Reset the gradient placeholder. We will collect gradients in
 		# gradBuffer until we are ready to update our policy network.
