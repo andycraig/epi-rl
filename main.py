@@ -8,14 +8,15 @@ import getopt
 
 def getActionOld(tfprob):
 	action = 1 if np.random.uniform() < tfprob else 0
-	y = [1] if action == 0 else [0] # a "fake label"
+	y = np.array([1]) if action == 0 else np.array([0]) # a "fake label"
 	return action, y
 
 def getActionNew(tfprob):
 	pvals = np.append(tfprob, 1-sum(tfprob))
-	y = np.random.multinomial(n=1, pvals=pvals)[0:-1]
+	yPrime = np.random.multinomial(n=1, pvals=pvals)
+	y = yPrime[1:]
 	try:
-		action = np.where(y == 1)[0][0]
+		action = np.asscalar(1 + np.where(yPrime == 1)[0][0])
 	except IndexError:
 		action = len(tfprob)
 	return action, y
@@ -139,12 +140,16 @@ def main(argv):
 			# If tfprob high, expect action 1, yPrime [0], y 0.
 			# In cartpole case, we want y=1 if action=0, and y=0 if action=1.
 			# TODO Change from np.random.multinomial, which is very slow.
-			useNewVersion = False
+			useNewVersion = True
+			actionNew, yNew = getActionNew(tfprob)
+			actionOld, yOld = getActionOld(tfprob)
 			if useNewVersion:
-				action, y = getActionNew(tfprob)
+				action, y = actionNew, yNew
 			else:
-				action, y = getActionOld(tfprob)
-
+				action, y = actionOld, yOld
+			print(tfprob)
+			print("actionOld: ",actionOld)
+			print("actionNew: ",actionNew)
 
 			xs.append(x) # observation
 			ys.append(y)
