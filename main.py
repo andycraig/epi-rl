@@ -6,22 +6,14 @@ import math
 import sys
 import getopt
 
-def getActionOld(tfprob):
-	action = 1 if np.random.uniform() < tfprob else 0
-	y = np.array([1]) if action == 0 else np.array([0]) # a "fake label"
-	return action, y
-
-def getActionOldReversed(tfprob):
-	# tfprob high should give y = [0]
-	action = 0 if np.random.uniform() < tfprob else 1
-	y = np.array([1]) if action == 0 else np.array([0]) #
-	return action, y
-
-def getActionNew(tfprob, env):
+def getAction(tfprob, env):
 	pvals = np.append(tfprob, 1-sum(tfprob))
-	yPrime = np.random.multinomial(n=1, pvals=pvals)
-	y = yPrime[1:]
+	# TODO Change from np.random.multinomial, which is very slow.
+	y = np.random.multinomial(n=1, pvals=pvals)[0:-1]
 	if env == 'cartpole':
+		# tfprob and y should match up.
+		# tfprob [1.] should give action = 0, y = [1]
+		# tfprob [0.] should give action = 1, y = [0]
 		action = 1 if y == np.array([0]) else 0
 	elif env == 'epidemic':
 		action = np.asscalar(np.where(yPrime == 1)[0][0])
@@ -144,13 +136,7 @@ def main(argv):
 			# Run the policy network and get an action to take.
 			# Purpose of action is soley to go into env.step().
 			tfprob = sess.run(probability,feed_dict={observations: x})
-			# If tfprob high, expect action 1, yPrime [0], y 0.
-			# In cartpole case, we want y=1 if action=0, and y=0 if action=1.
-			# TODO Change from np.random.multinomial, which is very slow.
-			actionNew, yNew = getActionNew(tfprob, environment)
-			actionOld, yOld = getActionOld(tfprob)
-			actionRev, yRev = getActionOldReversed(tfprob)
-			action, y = actionRev, yRev
+			action, y = getAction(tfprob, environment)
 
 			xs.append(x) # observation
 			ys.append(y)
