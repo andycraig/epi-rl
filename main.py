@@ -7,16 +7,19 @@ import sys
 import getopt
 
 def getAction(tfprob, env):
+	# tfprob and y should match up.
+	# tfprob [1.] should give action = 0, y = [1]
+	# tfprob [0.] should give action = 1, y = [0]
 	pvals = np.append(tfprob, 1-sum(tfprob))
 	# TODO Change from np.random.multinomial, which is very slow.
 	y = np.random.multinomial(n=1, pvals=pvals)[0:-1]
 	if env == 'cartpole':
-		# tfprob and y should match up.
-		# tfprob [1.] should give action = 0, y = [1]
-		# tfprob [0.] should give action = 1, y = [0]
 		action = 1 if y == np.array([0]) else 0
 	elif env == 'epidemic':
-		action = np.asscalar(np.where(yPrime == 1)[0][0])
+		try:
+			action = np.asscalar(np.where(y == 1)[0][0])
+		except IndexError: # If y was all zeroes.
+			action = len(y)
 	return action, y
 
 def main(argv):
@@ -36,7 +39,8 @@ def main(argv):
 	if environment == 'epidemic':
 		# Epidemic version.
 		from epidemic import Epidemic
-		env = Epidemic(gridLength=3, epsilon=0, beta=1, CToI=1, nInitialInfected=1, timeRemaining=10)
+		# Test parameters - gets reward by simply choosing initially infected host (1 in 4 chance). Should be easy to learn.
+		env = Epidemic(gridLength=2, epsilon=0, beta=0, CToI=0, timeRemaining=1, rewardForAnyNonI=True)
 		D = env.nHosts
 		nMinus1Actions = env.nHosts - 1
 	elif environment == 'cartpole':
@@ -74,7 +78,9 @@ def main(argv):
 
 	# The loss function. This sends the weights in the direction of making actions
 	# that gave good advantage (reward over time) more likely, and actions that didn't less likely.
-	#loglik = tf.log(input_y*(input_y - probability) + (1 - input_y)*(input_y + probability))
+	# Modified version of original; this one has high likelihood when input_y and probability match up.
+	# 1 - input_y corresponds to the last action.
+	# 1 - probability corresponds to the last action.
 	loglik = tf.log(input_y*probability + (1 - input_y)*(1 - probability))
 	loss = -tf.reduce_mean(loglik * advantages)
 	newGrads = tf.gradients(loss,tvars)
@@ -114,6 +120,7 @@ def main(argv):
 		rendering = False
 		sess.run(init)
 		observation = env.reset() # Obtain an initial observation of the environment
+		print(observation)
 
 		# Reset the gradient placeholder. We will collect gradients in
 		# gradBuffer until we are ready to update our policy network.

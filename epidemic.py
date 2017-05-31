@@ -12,25 +12,25 @@ class SIR(OrderedEnum):
 		return super(SIR, self).__repr__()[5:6]
 
 class Epidemic():
-	def __init__(self, gridLength=2, epsilon=0, beta=1, CToI=1, timeRemaining=10):
+	def __init__(self, gridLength=2, epsilon=0, beta=1, CToI=1, timeRemaining=10, rewardForAnyNonI=False):
 		# Epidemic parameters.
 		self.epsilon = epsilon
 		self.beta = beta
-		self.CToI = CTOI
+		self.CToI = CToI
 		self.timeRemaining = timeRemaining
+		self.rewardForAnyNonI = rewardForAnyNonI # For testing purposes.
 		self.gridLength = gridLength # Number of hosts is gridLength squared.
 		self.nHosts = gridLength**2
-		if nInitialInfected > self.nHosts:
-			raise ValueError("nInitialInfected is " + str(nInitialInfected) + " but there are only " + str(self.nHosts) + " hosts.")
-		self.nInitialInfected = nInitialInfected
+		self.nInitialInfected = 1
 		self.nInitialSusceptible = self.nHosts - self.nInitialInfected
 		self.reset()
-	def reset(self)
+	def reset(self):
 		# Initialise host grid - just a list with an infected at the corner.
 		self.hostGrid = [SIR.I] + [SIR.S] * self.nInitialSusceptible
+		return self.observe()
 	def observe(self):
 		# Cryptic hosts appear as Susceptible when observed.
-		observation = [SIR.S if x < SIR.I else SIR.I for x in self.hostGrid]
+		return [SIR.S if x < SIR.I else SIR.I for x in self.hostGrid]
 	def step(self, action):
 		# Apply the action and advance the epidemic one time step.
 		# Update time remaining.
@@ -41,7 +41,7 @@ class Epidemic():
 		# Whatever the hostGrid of the selected host was, set it to R#
 		try:
 			newHostGrid[action] = SIR.R
-		catch KeyError:
+		except KeyError:
 			# Action doesn't correspond to a host - do nothing.
 			pass
 		# Update hostState according to epidemic process.
@@ -67,7 +67,10 @@ class Epidemic():
 		done = self.timeRemaining <= 0
 		if done:
 			# Reward based on number of S hosts.
-			reward = sum(np.array(newHostGrid) == SIR.S)/nHosts # Higher reward for more S hosts
+			if self.rewardForAnyNonI:
+				reward = sum(np.array(newHostGrid) != SIR.I)/nHosts # Higher reward for more S hosts
+			else:
+				reward = sum(np.array(newHostGrid) == SIR.S)/nHosts # Higher reward for more S hosts
 		else:
 			reward = 0
 		info = None
