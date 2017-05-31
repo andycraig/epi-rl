@@ -1,15 +1,10 @@
 import random
 import numpy as np
-from OrderedEnum import OrderedEnum
 
-class SIR(OrderedEnum):
-	I = 2
-	C = 1
-	S = 0
-	R = -1
-	def __repr__(self):
-		# Just return the compartment name.
-		return super(SIR, self).__repr__()[5:6]
+SIR_I = 2
+SIR_C = 1
+SIR_S = 0
+SIR_R = -1
 
 class Epidemic():
 	def __init__(self, gridLength=2, epsilon=0, beta=1, CToI=1, timeRemaining=10, rewardForAnyNonI=False):
@@ -26,11 +21,11 @@ class Epidemic():
 		self.reset()
 	def reset(self):
 		# Initialise host grid - just a list with an infected at the corner.
-		self.hostGrid = [SIR.I] + [SIR.S] * self.nInitialSusceptible
+		self.hostGrid = [SIR_I] + [SIR_S] * self.nInitialSusceptible
 		return self.observe()
 	def observe(self):
 		# Cryptic hosts appear as Susceptible when observed.
-		return [SIR.S if x < SIR.I else SIR.I for x in self.hostGrid]
+		return [SIR_S if x < SIR_I else SIR_I for x in self.hostGrid]
 	def step(self, action):
 		# Apply the action and advance the epidemic one time step.
 		# Update time remaining.
@@ -40,25 +35,25 @@ class Epidemic():
 		# Apply effect of action.
 		# Whatever the hostGrid of the selected host was, set it to R#
 		try:
-			newHostGrid[action] = SIR.R
+			newHostGrid[action] = SIR_R
 		except KeyError:
 			# Action doesn't correspond to a host - do nothing.
 			pass
 		# Update hostState according to epidemic process.
 		for host in range(nHosts):
 			# S hosts can become C
-			if newHostGrid[host] == SIR.S:
+			if newHostGrid[host] == SIR_S:
 				# Primary infection
 				if random.random() < self.epsilon:
-					newHostGrid[host] = SIR.C
+					newHostGrid[host] = SIR_C
 				# Secondary infection
 				if getNumInfectedNeighbours(newHostGrid, host) > 0:
 					if random.random() < self.beta:
-						newHostGrid[host] = SIR.C
+						newHostGrid[host] = SIR_C
 			# C hosts can become I
-			if newHostGrid[host] == SIR.C:
+			if newHostGrid[host] == SIR_C:
 				if random.random() < self.CToI:
-					newHostGrid[host] = SIR.I
+					newHostGrid[host] = SIR_I
 		# Update host grid.
 		self.hostGrid = newHostGrid
 		# Create return values.
@@ -68,9 +63,9 @@ class Epidemic():
 		if done:
 			# Reward based on number of S hosts.
 			if self.rewardForAnyNonI:
-				reward = sum(np.array(newHostGrid) != SIR.I)/nHosts # Higher reward for more S hosts
+				reward = sum(np.array(newHostGrid) != SIR_I)/nHosts # Higher reward for more S hosts
 			else:
-				reward = sum(np.array(newHostGrid) == SIR.S)/nHosts # Higher reward for more S hosts
+				reward = sum(np.array(newHostGrid) == SIR_S)/nHosts # Higher reward for more S hosts
 		else:
 			reward = 0
 		info = None
@@ -79,7 +74,7 @@ class Epidemic():
 		infectedNeighbours = 0
 		for neighbourOffset in [-1, +1, -self.gridLength, +self.gridLength]:
 			try:
-				if self.hostGrid[host + neighbourOffset] >= SIR.C:
+				if self.hostGrid[host + neighbourOffset] >= SIR_C:
 					infectedNeighbours += 1
 			except:
 				pass

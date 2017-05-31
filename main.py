@@ -10,9 +10,13 @@ def getAction(tfprob, env):
 	# tfprob and y should match up.
 	# tfprob [1.] should give action = 0, y = [1]
 	# tfprob [0.] should give action = 1, y = [0]
-	pvals = np.append(tfprob, 1-sum(tfprob))
+	pvals = np.append(tfprob, 1-np.sum(tfprob))
 	# TODO Change from np.random.multinomial, which is very slow.
-	y = np.random.multinomial(n=1, pvals=pvals)[0:-1]
+	try:
+		y = np.random.multinomial(n=1, pvals=pvals)[0:-1]
+	except ValueError:
+		print("pvals summed to greater than 1! pvals: ",pvals)
+		raise ValueError
 	if env == 'cartpole':
 		action = 1 if y == np.array([0]) else 0
 	elif env == 'epidemic':
@@ -61,7 +65,7 @@ def main(argv):
 	tf.reset_default_graph()
 
 	#This defines the network as it goes from taking an observation of the environment to
-	#giving a probability of chosing to the action of moving left or right.
+	#giving a prob of chosing to the action of moving left or right.
 	observations = tf.placeholder(tf.float32, [None,D] , name="input_x")
 	W1 = tf.get_variable("W1", shape=[D, H],
 			   initializer=tf.contrib.layers.xavier_initializer())
