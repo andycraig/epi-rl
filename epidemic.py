@@ -12,7 +12,7 @@ class Epidemic():
 		self.epsilon = epsilon
 		self.beta = beta
 		self.CToI = CToI
-		self.timeRemaining = timeRemaining
+		self.initialTimeRemaining = timeRemaining
 		self.rewardForAnyNonI = rewardForAnyNonI # For testing purposes.
 		self.gridLength = gridLength # Number of hosts is gridLength squared.
 		self.nHosts = gridLength**2
@@ -20,6 +20,7 @@ class Epidemic():
 		self.nInitialSusceptible = self.nHosts - self.nInitialInfected
 		self.reset()
 	def reset(self):
+		self.timeRemaining = self.initialTimeRemaining
 		# Initialise host grid - just a list with an infected at the corner.
 		self.hostGrid = [SIR_I] + [SIR_S] * self.nInitialSusceptible
 		return self.observe()

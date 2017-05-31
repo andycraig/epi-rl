@@ -16,9 +16,10 @@ def getAction(tfprob, env):
 	if env == 'cartpole':
 		action = 1 if (y == np.array([0,1])).all() else 0
 	elif env == 'epidemic':
-		print("y: ",y)
-		action = np.asscalar(np.where(y == 1)[0])
-		print("action: ",action)
+		try:
+			action = np.asscalar(np.where(y == 1)[0])
+		except ValueError:
+			print("ValueError! y was ", y)
 	return action, y
 
 def main(argv):
@@ -38,8 +39,7 @@ def main(argv):
 	if environment == 'epidemic':
 		# Epidemic version.
 		from epidemic import Epidemic
-		# Test parameters - gets reward by simply choosing initially infected host (1 in 4 chance). Should be easy to learn.
-		env = Epidemic(gridLength=2, epsilon=0, beta=0, CToI=0, timeRemaining=1, rewardForAnyNonI=True)
+		env = Epidemic(gridLength=4, epsilon=0, beta=0.25, CToI=1, timeRemaining=10)
 		D = env.nHosts
 		nActions = env.nHosts
 	elif environment == 'cartpole':
@@ -68,7 +68,6 @@ def main(argv):
 	W2 = tf.get_variable("W2", shape=[H, nActions],
 			   initializer=tf.contrib.layers.xavier_initializer())
 	score = tf.matmul(layer1,W2)
-	# TODO sigmoid doesn't make sense if length of score is longer than 1. Can't just change to softmax because that only makes sense if length of score is same as actual number of actions.
 	probability = tf.nn.softmax(score)
 
 	#From here we define the parts of the network needed for learning a good policy.
@@ -151,11 +150,14 @@ def main(argv):
 
 			# step the environment and get new measurements
 			observation, reward, done, info = env.step(action)
+
 			reward_sum += reward
 
 			drs.append(reward) # record reward (has to be done after we call step() to get reward for previous action)
 
 			if done:
+				print("total reward for this run was: ",reward)
+				print("drs: ", drs)
 				episode_number += 1
 				# stack together all inputs, hidden states, action gradients, and rewards for this episode
 				epx = np.vstack(xs)
@@ -168,6 +170,11 @@ def main(argv):
 				discounted_epr = discount_rewards(epr)
 				# size the rewards to be unit normal (helps control the gradient estimator variance)
 				discounted_epr -= np.mean(discounted_epr)
+				#TODO Next bit fails if no reward. Scaling is probably unnecessary if there is no reward?
+				if np.std(discounted_epr) < 0.0001:
+					print("epr: ", epr)
+					print("discounted_epr: ", discounted_epr)
+					raise ValueError("Standard deviation of discounted_epr is too small (", np.std(discounted_epr), ")")
 				discounted_epr /= np.std(discounted_epr)
 
 				# Get the gradient for this episode, and save it in the gradBuffer
