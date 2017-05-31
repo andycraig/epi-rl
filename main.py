@@ -6,6 +6,20 @@ import math
 import sys
 import getopt
 
+def getActionOld(tfprob):
+	action = 1 if np.random.uniform() < tfprob else 0
+	y = [1] if action == 0 else [0] # a "fake label"
+	return action, y
+
+def getActionNew(tfprob):
+	pvals = np.append(tfprob, 1-sum(tfprob))
+	y = np.random.multinomial(n=1, pvals=pvals)[0:-1]
+	try:
+		action = np.where(y == 1)[0][0]
+	except IndexError:
+		action = len(tfprob)
+	return action, y
+
 def main(argv):
 	environment = ''
 	graphics = False
@@ -127,15 +141,10 @@ def main(argv):
 			# TODO Change from np.random.multinomial, which is very slow.
 			useNewVersion = False
 			if useNewVersion:
-				pvals = np.append(tfprob, 1-sum(tfprob))
-				y = np.random.multinomial(n=1, pvals=pvals)[0:-1]
-				try:
-					action = np.where(y == 1)[0][0]
-				except IndexError:
-					action = nMinus1Actions
+				action, y = getActionNew(tfprob)
 			else:
-				action = 1 if np.random.uniform() < tfprob else 0
-				y = [1] if action == 0 else [0] # a "fake label"
+				action, y = getActionOld(tfprob)
+
 
 			xs.append(x) # observation
 			ys.append(y)
