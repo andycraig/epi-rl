@@ -11,14 +11,20 @@ def getActionOld(tfprob):
 	y = np.array([1]) if action == 0 else np.array([0]) # a "fake label"
 	return action, y
 
-def getActionNew(tfprob):
+def getActionOldReversed(tfprob):
+	# tfprob high should give y = [0]
+	action = 0 if np.random.uniform() < tfprob else 1
+	y = np.array([1]) if action == 0 else np.array([0]) #
+	return action, y
+
+def getActionNew(tfprob, env):
 	pvals = np.append(tfprob, 1-sum(tfprob))
 	yPrime = np.random.multinomial(n=1, pvals=pvals)
 	y = yPrime[1:]
-	try:
-		action = np.asscalar(1 + np.where(yPrime == 1)[0][0])
-	except IndexError:
-		action = len(tfprob)
+	if env == 'cartpole':
+		action = 1 if y == np.array([0]) else 0
+	elif env == 'epidemic':
+		action = np.asscalar(np.where(yPrime == 1)[0][0])
 	return action, y
 
 def main(argv):
@@ -76,7 +82,8 @@ def main(argv):
 
 	# The loss function. This sends the weights in the direction of making actions
 	# that gave good advantage (reward over time) more likely, and actions that didn't less likely.
-	loglik = tf.log(input_y*(input_y - probability) + (1 - input_y)*(input_y + probability))
+	#loglik = tf.log(input_y*(input_y - probability) + (1 - input_y)*(input_y + probability))
+	loglik = tf.log(input_y*probability + (1 - input_y)*(1 - probability))
 	loss = -tf.reduce_mean(loglik * advantages)
 	newGrads = tf.gradients(loss,tvars)
 
@@ -140,16 +147,10 @@ def main(argv):
 			# If tfprob high, expect action 1, yPrime [0], y 0.
 			# In cartpole case, we want y=1 if action=0, and y=0 if action=1.
 			# TODO Change from np.random.multinomial, which is very slow.
-			useNewVersion = True
-			actionNew, yNew = getActionNew(tfprob)
+			actionNew, yNew = getActionNew(tfprob, environment)
 			actionOld, yOld = getActionOld(tfprob)
-			if useNewVersion:
-				action, y = actionNew, yNew
-			else:
-				action, y = actionOld, yOld
-			print(tfprob)
-			print("actionOld: ",actionOld)
-			print("actionNew: ",actionNew)
+			actionRev, yRev = getActionOldReversed(tfprob)
+			action, y = actionRev, yRev
 
 			xs.append(x) # observation
 			ys.append(y)
