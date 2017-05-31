@@ -120,11 +120,25 @@ def main(argv):
 			x = np.reshape(observation,[1,D])
 
 			# Run the policy network and get an action to take.
+			# Purpose of action is soley to go into env.step().
 			tfprob = sess.run(probability,feed_dict={observations: x})
-			action = 1 if np.random.uniform() < tfprob else 0
+			# If tfprob high, expect action 1, yPrime [0], y 0.
+			# TODO Change from np.random.multinomial, which is very slow.
+			useNewVersion = True
+			if useNewVersion:
+				pvals = np.append(tfprob, 1-sum(tfprob))
+				y = np.random.multinomial(n=1, pvals=pvals)[0:-1]
+				try:
+					action = np.where(y == 1)[0][0]
+				except IndexError:
+					action = nMinus1Actions
+			else:
+				action = 1 if np.random.uniform() < tfprob else 0
+				y = [1] if action == 0 else [0] # a "fake label"
 
 			xs.append(x) # observation
-			y = 1 if action == 0 else 0 # a "fake label"
+			# In cartpole case, we want y=1 if action=0, and y=0 if action=1.
+
 			ys.append(y)
 
 			# step the environment and get new measurements
