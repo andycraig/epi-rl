@@ -25,11 +25,13 @@ def main(argv):
 		from epidemic import Epidemic
 		env = Epidemic(gridLength=3, epsilon=0, beta=1, CToI=1, nInitialInfected=1, timeRemaining=10)
 		D = env.nHosts
+		nMinus1Actions = env.nHosts - 1 # Minus 1 because last action prob is determined by others.
 	elif environment == 'cartpole':
 		# Cartpole version.
 		import gym
 		env = gym.make('CartPole-v0')
 		D = 4 # input dimensionality
+		nMinus1Actions = 1 # Minus 1 because last action prob is determined by others.
 	else:
 		raise ValueError("--env must be epidemic or cartpole.")
 
@@ -42,15 +44,15 @@ def main(argv):
 	tf.reset_default_graph()
 
 	#This defines the network as it goes from taking an observation of the environment to
-	#giving a probability of chosing to the action of moving left or right.
+	#giving a prob of choosing each action.
 	observations = tf.placeholder(tf.float32, [None,D] , name="input_x")
 	W1 = tf.get_variable("W1", shape=[D, H],
 			   initializer=tf.contrib.layers.xavier_initializer())
 	layer1 = tf.nn.relu(tf.matmul(observations,W1))
-	W2 = tf.get_variable("W2", shape=[H, 1],
+	W2 = tf.get_variable("W2", shape=[H, nMinus1Actions],
 			   initializer=tf.contrib.layers.xavier_initializer())
-	score = tf.matmul(layer1,W2)
-	probability = tf.nn.sigmoid(score)
+	score = tf.matmul(layer1,W2) # Unscaled logits.
+	probability = tf.nn.softmax(score)
 
 	#From here we define the parts of the network needed for learning a good policy.
 	tvars = tf.trainable_variables()
@@ -59,8 +61,10 @@ def main(argv):
 
 	# The loss function. This sends the weights in the direction of making actions
 	# that gave good advantage (reward over time) more likely, and actions that didn't less likely.
-	loglik = tf.log(input_y*(input_y - probability) + (1 - input_y)*(input_y + probability))
-	loss = -tf.reduce_mean(loglik * advantages)
+	#loglik = tf.log(input_y*(input_y - probability) + (1 - input_y)*(input_y + probability))
+	#loss = -tf.reduce_mean(loglik * advantages)
+	# softmax_cross_entropy_with_logits requires unscaled logits, i.e., score rather than probability.
+	loss = tf.nn.softmax_cross_entropy_with_logits(labels=input_y, logits=score)
 	newGrads = tf.gradients(loss,tvars)
 
 	# Once we have collected a series of gradients from multiple episodes, we apply them.
@@ -115,13 +119,16 @@ def main(argv):
 				rendering = True
 
 			# Make sure the observation is in a shape the network can handle.
+			#TODO 1 in line below may need generalising.
 			x = np.reshape(observation,[1,D])
 
 			# Run the policy network and get an action to take.
 			tfprob = sess.run(probability,feed_dict={observations: x})
+			#TODO Generalise to more than two actions.
 			action = 1 if np.random.uniform() < tfprob else 0
 
 			xs.append(x) # observation
+			#TODO Generalise to more than two actions.
 			y = 1 if action == 0 else 0 # a "fake label"
 			ys.append(y)
 
