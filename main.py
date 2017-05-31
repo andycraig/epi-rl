@@ -16,10 +16,9 @@ def getAction(tfprob, env):
 	if env == 'cartpole':
 		action = 1 if (y == np.array([0,1])).all() else 0
 	elif env == 'epidemic':
-		try:
-			action = np.asscalar(np.where(y == 1)[0][0])
-		except IndexError: # If y was all zeroes.
-			action = len(y)
+		print("y: ",y)
+		action = np.asscalar(np.where(y == 1)[0])
+		print("action: ",action)
 	return action, y
 
 def main(argv):
@@ -80,7 +79,11 @@ def main(argv):
 	# The loss function. This sends the weights in the direction of making actions
 	# that gave good advantage (reward over time) more likely, and actions that didn't less likely.
 	# Modified version of original; this one has high likelihood when input_y and probability match up.
-	loglik = tf.log(input_y*probability + (1 - input_y)*(1 - probability))
+	# For example, if input_y is [0, 1] and probability is [.2, .8], we should get
+	# tf.log()
+	# For example, if input_y is [0, 1, 0] and probability is [.1, .8, .1], we should get
+	# tf.log()
+	loglik = tf.log(tf.reduce_sum(tf.mul(input_y, probability)))
 	loss = -tf.reduce_mean(loglik * advantages)
 	newGrads = tf.gradients(loss,tvars)
 

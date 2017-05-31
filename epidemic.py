@@ -31,23 +31,24 @@ class Epidemic():
 		# Update time remaining.
 		self.timeRemaining -= 1
 		# Copy hostGrid, in preparation for modifying it.
-		newHostGrid = hostGrid[:]
+		newHostGrid = self.hostGrid[:]
 		# Apply effect of action.
 		# Whatever the hostGrid of the selected host was, set it to R#
 		try:
 			newHostGrid[action] = SIR_R
-		except KeyError:
+		except IndexError:
+			print("Got action ",action,", but there are only ",self.nHosts," hosts.")
 			# Action doesn't correspond to a host - do nothing.
-			pass
+			raise IndexError
 		# Update hostState according to epidemic process.
-		for host in range(nHosts):
+		for host in range(self.nHosts):
 			# S hosts can become C
 			if newHostGrid[host] == SIR_S:
 				# Primary infection
 				if random.random() < self.epsilon:
 					newHostGrid[host] = SIR_C
 				# Secondary infection
-				if getNumInfectedNeighbours(newHostGrid, host) > 0:
+				if self.getNumInfectedNeighbours(host) > 0:
 					if random.random() < self.beta:
 						newHostGrid[host] = SIR_C
 			# C hosts can become I
@@ -63,9 +64,9 @@ class Epidemic():
 		if done:
 			# Reward based on number of S hosts.
 			if self.rewardForAnyNonI:
-				reward = sum(np.array(newHostGrid) != SIR_I)/nHosts # Higher reward for more S hosts
+				reward = sum(np.array(newHostGrid) != SIR_I)/self.nHosts # Higher reward for more S hosts
 			else:
-				reward = sum(np.array(newHostGrid) == SIR_S)/nHosts # Higher reward for more S hosts
+				reward = sum(np.array(newHostGrid) == SIR_S)/self.nHosts # Higher reward for more S hosts
 		else:
 			reward = 0
 		info = None
