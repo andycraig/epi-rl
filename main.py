@@ -123,8 +123,9 @@ def main(argv):
 			# Purpose of action is soley to go into env.step().
 			tfprob = sess.run(probability,feed_dict={observations: x})
 			# If tfprob high, expect action 1, yPrime [0], y 0.
+			# In cartpole case, we want y=1 if action=0, and y=0 if action=1.
 			# TODO Change from np.random.multinomial, which is very slow.
-			useNewVersion = True
+			useNewVersion = False
 			if useNewVersion:
 				pvals = np.append(tfprob, 1-sum(tfprob))
 				y = np.random.multinomial(n=1, pvals=pvals)[0:-1]
@@ -137,8 +138,6 @@ def main(argv):
 				y = [1] if action == 0 else [0] # a "fake label"
 
 			xs.append(x) # observation
-			# In cartpole case, we want y=1 if action=0, and y=0 if action=1.
-
 			ys.append(y)
 
 			# step the environment and get new measurements
