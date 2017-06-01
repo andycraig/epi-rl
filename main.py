@@ -156,8 +156,6 @@ def main(argv):
 			drs.append(reward) # record reward (has to be done after we call step() to get reward for previous action)
 
 			if done:
-				print("total reward for this run was: ",reward)
-				print("drs: ", drs)
 				episode_number += 1
 				# stack together all inputs, hidden states, action gradients, and rewards for this episode
 				epx = np.vstack(xs)
@@ -171,11 +169,8 @@ def main(argv):
 				# size the rewards to be unit normal (helps control the gradient estimator variance)
 				discounted_epr -= np.mean(discounted_epr)
 				#TODO Next bit fails if no reward. Scaling is probably unnecessary if there is no reward?
-				if np.std(discounted_epr) < 0.0001:
-					print("epr: ", epr)
-					print("discounted_epr: ", discounted_epr)
-					raise ValueError("Standard deviation of discounted_epr is too small (", np.std(discounted_epr), ")")
-				discounted_epr /= np.std(discounted_epr)
+				if np.std(discounted_epr) > 0:
+					discounted_epr /= np.std(discounted_epr)
 
 				# Get the gradient for this episode, and save it in the gradBuffer
 				tGrad = sess.run(newGrads,feed_dict={observations: epx, input_y: epy, advantages: discounted_epr})
