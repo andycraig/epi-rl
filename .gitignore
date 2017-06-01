@@ -1,4 +1,4 @@
-notes.txt
+*.txt
 *_files/
 *.html
 __pycache__

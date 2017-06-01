@@ -90,3 +90,13 @@ class Epidemic():
 			except:
 				pass
 		return infectedNeighbours
+	@staticmethod
+	def outputSample(fileName="sampleEpidemic.txt"):
+		timeRemaining = 10
+		s = Epidemic(gridLength=5, epsilon=0, beta=0.25, CToI=1, timeRemaining=timeRemaining)
+		with open(fileName, 'w') as f:
+			for t in range(timeRemaining):
+				f.write("Timestep: " + str(t) + "\n")
+				f.write(str(s))
+				s.step(s.nHosts - 1) # Always rogue last host.
+		print("Wrote sample epidemic to ", fileName)
