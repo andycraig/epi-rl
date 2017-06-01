@@ -24,22 +24,24 @@ def getAction(tfprob, env):
 
 def main(argv):
 	environment = ''
+	gridLength = None
 	graphics = False
 	try:
-		opts, args = getopt.getopt(argv,"e:g",["env=","graphics="])
+		opts, args = getopt.getopt(argv,"e:h:g",["env=","hostlength=","graphics="])
 	except getopt.GetoptError:
 		print('main.py -e <environment> -g')
 		sys.exit(2)
 	for opt, arg in opts:
 		if opt in ("-e", "--env"):
 			environment = arg
+		elif opt in ("-h", "--hostlength"):
+			gridLength = int(arg)
 		elif opt in ("-g", "--graphics"):
-			 graphics = True
-
+			graphics = True
 	if environment == 'epidemic':
 		# Epidemic version.
 		from epidemic import Epidemic
-		env = Epidemic(gridLength=4, epsilon=0, beta=0.25, CToI=1, timeRemaining=10)
+		env = Epidemic(gridLength=gridLength, epsilon=0, beta=0.25, CToI=1, timeRemaining=10)
 		D = env.nHosts
 		nActions = env.nHosts
 	elif environment == 'cartpole':
@@ -48,6 +50,8 @@ def main(argv):
 		env = gym.make('CartPole-v0')
 		D = 4 # input dimensionality
 		nActions = 2
+		if gridLength != None:
+			print("Ignoring hostlength argument for cartpole environment.")
 	else:
 		raise ValueError("--env must be epidemic or cartpole.")
 

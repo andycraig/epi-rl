@@ -16,6 +16,8 @@ class Epidemic():
 		self.initialTimeRemaining = timeRemaining
 		self.initialInfectedAnywhere = initialInfectedAnywhere
 		self.rewardForAnyNonI = rewardForAnyNonI # For testing purposes.
+		if gridLength < 0:
+			raise ValueError("gridLength must be positive integer.")
 		self.gridLength = gridLength # Number of hosts is gridLength squared.
 		self.nHosts = gridLength**2
 		self.nInitialInfected = 1
@@ -23,8 +25,9 @@ class Epidemic():
 		self.reset()
 	def reset(self):
 		self.timeRemaining = self.initialTimeRemaining
-		# Initialise host grid - just a list with an infected at the corner.
+		# Initialise host grid - just a list.
 		self.hostGrid = [SIR_S] * self.nHosts
+		# Choose initial host to be infected.
 		if self.initialInfectedAnywhere:
 			self.hostGrid[np.random.randint(0, self.nHosts)] = SIR_I
 		else:
