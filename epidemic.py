@@ -7,12 +7,14 @@ SIR_S = 0
 SIR_R = -1
 
 class Epidemic():
-	def __init__(self, gridLength=2, epsilon=0, beta=1, CToI=1, timeRemaining=10, rewardForAnyNonI=False):
+	def __init__(self, gridLength=2, epsilon=0, beta=1, CToI=1,
+				timeRemaining=10, rewardForAnyNonI=False, initialInfectedAnywhere=True):
 		# Epidemic parameters.
 		self.epsilon = epsilon
 		self.beta = beta
 		self.CToI = CToI
 		self.initialTimeRemaining = timeRemaining
+		self.initialInfectedAnywhere = initialInfectedAnywhere
 		self.rewardForAnyNonI = rewardForAnyNonI # For testing purposes.
 		self.gridLength = gridLength # Number of hosts is gridLength squared.
 		self.nHosts = gridLength**2
@@ -22,7 +24,11 @@ class Epidemic():
 	def reset(self):
 		self.timeRemaining = self.initialTimeRemaining
 		# Initialise host grid - just a list with an infected at the corner.
-		self.hostGrid = [SIR_I] + [SIR_S] * self.nInitialSusceptible
+		self.hostGrid = [SIR_S] * self.nHosts
+		if self.initialInfectedAnywhere:
+			self.hostGrid[np.random.randint(0, self.nHosts)] = SIR_I
+		else:
+			self.hostGrid[0] = SIR_I
 		return self.observe()
 	def observe(self):
 		# Cryptic hosts appear as Susceptible when observed.
