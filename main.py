@@ -129,6 +129,21 @@ def main(argv):
 		# Get the initial variable values, so we can compare them to the final values.
 		W1Init = sess.run(W1)
 		W2Init = sess.run(W2)
+
+		# Run the trained model on a sample and save to a file.
+		resultsFile = "outputInitial.txt"
+		with open(resultsFile, "w") as f:
+			observation = env.reset()
+			done = False
+			while not done:
+				f.write(str(env))
+				x = np.reshape(observation,[1,D])
+				tfprob = sess.run(probability,feed_dict={observations: x})
+				action, y = getAction(tfprob, environment)
+				observation, reward, done, info = env.step(action)
+			f.write(str(env))
+			f.write("Reward: " + str(reward))
+		print("Wrote example to " + resultsFile)
 		observation = env.reset() # Obtain an initial observation of the environment
 
 		# Reset the gradient placeholder. We will collect gradients in
@@ -213,17 +228,19 @@ def main(argv):
 		#print("Final value of ", W1String,":\n",W1Final)
 		#print("Final value of ", W2String,":\n",W2Final)
 		# Run the trained model on a sample and save to a file.
-		resultsFile = "resultExample.txt"
+		resultsFile = "outputFinal.txt"
 		with open(resultsFile, "w") as f:
 			observation = env.reset()
 			done = False
 			while not done:
 				f.write(str(env))
+				x = np.reshape(observation,[1,D])
 				tfprob = sess.run(probability,feed_dict={observations: x})
 				action, y = getAction(tfprob, environment)
 				observation, reward, done, info = env.step(action)
 			# Output final state.
 			f.write(str(env))
+			f.write("Reward: " + str(reward))
 		print("Wrote example to " + resultsFile)
 
 
