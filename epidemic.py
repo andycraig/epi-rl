@@ -96,7 +96,8 @@ class Epidemic():
 		s = Epidemic(gridLength=5, epsilon=0, beta=0.25, CToI=1, timeRemaining=timeRemaining)
 		with open(fileName, 'w') as f:
 			for t in range(timeRemaining):
-				f.write("Timestep: " + str(t) + "\n")
 				f.write(str(s))
 				s.step(s.nHosts - 1) # Always rogue last host.
 		print("Wrote sample epidemic to ", fileName)
+	def __repr__(self):
+		return "Time remaining: " + str(self.timeRemaining) + "\n" + str(np.reshape(self.hostGrid, [self.gridLength, self.gridLength])) + "\n"
