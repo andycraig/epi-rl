@@ -117,7 +117,7 @@ def main(argv):
 	running_reward = None
 	reward_sum = 0
 	episode_number = 1
-	total_episodes = 10000
+	total_episodes = 2500
 	init = tf.initialize_all_variables()
 
 	# Launch the graph
@@ -199,7 +199,21 @@ def main(argv):
 
 				observation = env.reset()
 
-	print(episode_number,'Episodes completed.')
+		print(episode_number,'Episodes completed.')
+		# Run the trained model on a sample and save to a file.
+		resultsFile = "resultExample.txt"
+		with open(resultsFile, "w") as f:
+			observation = env.reset()
+			done = False
+			while not done:
+				f.write(str(env))
+				tfprob = sess.run(probability,feed_dict={observations: x})
+				action, y = getAction(tfprob, environment)
+				observation, reward, done, info = env.step(action)
+			# Output final state.
+			f.write(str(env))
+		print("Wrote example to " + resultsFile)
+
 
 if __name__ == "__main__":
 	  main(sys.argv[1:])
