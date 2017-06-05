@@ -41,9 +41,9 @@ def main(argv):
 	if environment == 'epidemic':
 		# Epidemic version.
 		from epidemic import Epidemic
-		env = Epidemic(gridLength=gridLength, epsilon=0, beta=0.25, CToI=1, timeRemaining=10)
+		env = Epidemic(gridLength=gridLength, epsilon=0, beta=0, CToI=1, timeRemaining=5)
 		D = env.nHosts
-		nActions = env.nHosts
+		nActions = env.nHosts + 1 # +1 for 'do nothing'.
 	elif environment == 'cartpole':
 		# Cartpole version.
 		import gym
@@ -65,11 +65,13 @@ def main(argv):
 
 	#This defines the network as it goes from taking an observation of the environment to
 	#giving a prob of chosing to the action of moving left or right.
+	W1String = "W1"
+	W2String = "W2"
 	observations = tf.placeholder(tf.float32, [None,D] , name="input_x")
-	W1 = tf.get_variable("W1", shape=[D, H],
+	W1 = tf.get_variable(W1String, shape=[D, H],
 			   initializer=tf.contrib.layers.xavier_initializer())
 	layer1 = tf.nn.relu(tf.matmul(observations,W1))
-	W2 = tf.get_variable("W2", shape=[H, nActions],
+	W2 = tf.get_variable(W2String, shape=[H, nActions],
 			   initializer=tf.contrib.layers.xavier_initializer())
 	score = tf.matmul(layer1,W2)
 	probability = tf.nn.softmax(score)
@@ -117,13 +119,16 @@ def main(argv):
 	running_reward = None
 	reward_sum = 0
 	episode_number = 1
-	total_episodes = 2500
+	total_episodes = 1000
 	init = tf.initialize_all_variables()
 
 	# Launch the graph
 	with tf.Session() as sess:
 		rendering = False
 		sess.run(init)
+		# Get the initial variable values, so we can compare them to the final values.
+		W1Init = sess.run(W1)
+		W2Init = sess.run(W2)
 		observation = env.reset() # Obtain an initial observation of the environment
 
 		# Reset the gradient placeholder. We will collect gradients in
@@ -200,6 +205,13 @@ def main(argv):
 				observation = env.reset()
 
 		print(episode_number,'Episodes completed.')
+		# Get the final variable values.
+		W1Final = sess.run(W1)
+		W2Final = sess.run(W2)
+		#print("Initial value of ", W1String,":\n",W1Init)
+		#print("Initial value of ", W2String,":\n",W2Init)
+		#print("Final value of ", W1String,":\n",W1Final)
+		#print("Final value of ", W2String,":\n",W2Final)
 		# Run the trained model on a sample and save to a file.
 		resultsFile = "resultExample.txt"
 		with open(resultsFile, "w") as f:

@@ -47,9 +47,8 @@ class Epidemic():
 		try:
 			newHostGrid[action] = SIR_R
 		except IndexError:
-			print("Got action ",action,", but there are only ",self.nHosts," hosts.")
 			# Action doesn't correspond to a host - do nothing.
-			raise IndexError
+			pass
 		# Update hostState according to epidemic process.
 		for host in range(self.nHosts):
 			# S hosts can become C
