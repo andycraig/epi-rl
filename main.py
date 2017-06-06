@@ -79,17 +79,18 @@ def main(argv):
 	#This defines the network as it goes from taking an observation of the environment to
 	#giving a prob of chosing to the action of moving left or right.
 	W = []
+	layers = []
 	W1String = "W1"
 	W2String = "W2"
 	observations = tf.placeholder(tf.float32, [None,D] , name="input_x")
 	# From observations to hidden layer 0.
 	W.append(tf.get_variable(W1String, shape=[D, H[0]],
 			   initializer=tf.contrib.layers.xavier_initializer()))
-	layer1 = tf.nn.relu(tf.matmul(observations,W[0]))
-	# From hidden layer 0 to output.
-	W.append(tf.get_variable(W2String, shape=[H[0], nActions],
+	layers.append(tf.nn.relu(tf.matmul(observations,W[0])))
+	# From last hidden layer to output.
+	W.append(tf.get_variable(W2String, shape=[H[-1], nActions],
 			   initializer=tf.contrib.layers.xavier_initializer()))
-	score = tf.matmul(layer1,W[1])
+	score = tf.matmul(layers[-1],W[1])
 	probability = tf.nn.softmax(score)
 
 	#From here we define the parts of the network needed for learning a good policy.
