@@ -84,11 +84,16 @@ def main(argv):
 	W2String = "W2"
 	observations = tf.placeholder(tf.float32, [None,D] , name="input_x")
 	# From observations to hidden layer 0.
-	W.append(tf.get_variable(W1String, shape=[D, H[0]],
+	W.append(tf.get_variable("W0", shape=[D, H[0]],
 			   initializer=tf.contrib.layers.xavier_initializer()))
 	layers.append(tf.nn.relu(tf.matmul(observations,W[0])))
+	# Intermediate layers.
+	for iLayer in range(1, len(H)):
+		W.append(tf.get_variable("W"+str(iLayer), shape=[H[iLayer-1], H[iLayer]],
+				   initializer=tf.contrib.layers.xavier_initializer()))
+		layers.append(tf.nn.relu(tf.matmul(observations,W[iLayer-1])))
 	# From last hidden layer to output.
-	W.append(tf.get_variable(W2String, shape=[H[-1], nActions],
+	W.append(tf.get_variable("W"+str(len(H)), shape=[H[-1], nActions],
 			   initializer=tf.contrib.layers.xavier_initializer()))
 	score = tf.matmul(layers[-1],W[1])
 	probability = tf.nn.softmax(score)
