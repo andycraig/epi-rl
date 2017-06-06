@@ -24,7 +24,7 @@ def getAction(tfprob, env):
 
 def main(argv):
 	# hyperparameters
-	H = 15 # number of hidden layer neurons
+	H = [15] # number of hidden layer neurons
 	batch_size = 5 # every how many episodes to do a param update?
 	learning_rate = 1e-2 # feel free to play with this to train faster or more stably.
 	gamma = 0.99 # discount factor for reward
@@ -82,10 +82,12 @@ def main(argv):
 	W1String = "W1"
 	W2String = "W2"
 	observations = tf.placeholder(tf.float32, [None,D] , name="input_x")
-	W.append(tf.get_variable(W1String, shape=[D, H],
+	# From observations to hidden layer 0.
+	W.append(tf.get_variable(W1String, shape=[D, H[0]],
 			   initializer=tf.contrib.layers.xavier_initializer()))
 	layer1 = tf.nn.relu(tf.matmul(observations,W[0]))
-	W.append(tf.get_variable(W2String, shape=[H, nActions],
+	# From hidden layer 0 to output.
+	W.append(tf.get_variable(W2String, shape=[H[0], nActions],
 			   initializer=tf.contrib.layers.xavier_initializer()))
 	score = tf.matmul(layer1,W[1])
 	probability = tf.nn.softmax(score)
