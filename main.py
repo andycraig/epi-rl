@@ -26,8 +26,10 @@ def main(argv):
 	environment = ''
 	gridLength = None
 	graphics = False
+	total_episodes = 10000
+	timeRemaining = 5
 	try:
-		opts, args = getopt.getopt(argv,"e:h:g",["env=","hostlength=","graphics="])
+		opts, args = getopt.getopt(argv,"e:h:n:t:g",["env=","hostlength=","nepisodes=","timeremaining=","graphics="])
 	except getopt.GetoptError:
 		print('main.py -e <environment> -g')
 		sys.exit(2)
@@ -36,12 +38,21 @@ def main(argv):
 			environment = arg
 		elif opt in ("-h", "--hostlength"):
 			gridLength = int(arg)
+		elif opt in ("-t", "--timeremaining"):
+			timeRemaining = int(arg)
+		elif opt in ("-n", "--nepisodes"):
+			total_episodes = int(arg)
 		elif opt in ("-g", "--graphics"):
 			graphics = True
 	if environment == 'epidemic':
 		# Epidemic version.
 		from epidemic import Epidemic
-		env = Epidemic(gridLength=gridLength, epsilon=0, beta=0, CToI=1, timeRemaining=5)
+		env = Epidemic(gridLength=gridLength,
+						epsilon=0,
+						beta=0,
+						CToI=1,
+						timeRemaining=timeRemaining,
+						rewardForAnyNonI=True)
 		D = env.nHosts
 		nActions = env.nHosts + 1 # +1 for 'do nothing'.
 	elif environment == 'cartpole':
@@ -54,6 +65,7 @@ def main(argv):
 			print("Ignoring hostlength argument for cartpole environment.")
 	else:
 		raise ValueError("--env must be epidemic or cartpole.")
+
 
 	# hyperparameters
 	H = 10 # number of hidden layer neurons
@@ -119,7 +131,6 @@ def main(argv):
 	running_reward = None
 	reward_sum = 0
 	episode_number = 1
-	total_episodes = 1000
 	init = tf.initialize_all_variables()
 
 	# Launch the graph
@@ -131,19 +142,25 @@ def main(argv):
 		W2Init = sess.run(W2)
 
 		# Run the trained model on a sample and save to a file.
-		resultsFile = "outputInitial.txt"
-		with open(resultsFile, "w") as f:
-			observation = env.reset()
-			done = False
+		observation = env.reset()
+		done = False
+		with open("probsInitial.txt", "w") as f:
+			f.write(str(env))
+			x = np.reshape(observation,[1,D])
+			tfprob = sess.run(probability,feed_dict={observations: x})
+			f.write(str(np.reshape(tfprob[0][0:env.nHosts], [env.gridLength, env.gridLength])))
+			f.write("\nProb. of no action: " + str(tfprob[0][-1]))
+		with open("outputInitial.txt", "w") as f:
 			while not done:
 				f.write(str(env))
 				x = np.reshape(observation,[1,D])
 				tfprob = sess.run(probability,feed_dict={observations: x})
 				action, y = getAction(tfprob, environment)
 				observation, reward, done, info = env.step(action)
+			# Output final state.
 			f.write(str(env))
 			f.write("Reward: " + str(reward))
-		print("Wrote example to " + resultsFile)
+
 		observation = env.reset() # Obtain an initial observation of the environment
 
 		# Reset the gradient placeholder. We will collect gradients in
@@ -191,10 +208,10 @@ def main(argv):
 				# compute the discounted reward backwards through time
 				discounted_epr = discount_rewards(epr)
 				# size the rewards to be unit normal (helps control the gradient estimator variance)
-				discounted_epr -= np.mean(discounted_epr)
+				#discounted_epr -= np.mean(discounted_epr)
 				#TODO Next bit fails if no reward. Scaling is probably unnecessary if there is no reward?
-				if np.std(discounted_epr) > 0:
-					discounted_epr /= np.std(discounted_epr)
+				#if np.std(discounted_epr) > 0:
+				#	discounted_epr /= np.std(discounted_epr)
 
 				# Get the gradient for this episode, and save it in the gradBuffer
 				tGrad = sess.run(newGrads,feed_dict={observations: epx, input_y: epy, advantages: discounted_epr})
@@ -228,10 +245,15 @@ def main(argv):
 		#print("Final value of ", W1String,":\n",W1Final)
 		#print("Final value of ", W2String,":\n",W2Final)
 		# Run the trained model on a sample and save to a file.
-		resultsFile = "outputFinal.txt"
-		with open(resultsFile, "w") as f:
-			observation = env.reset()
-			done = False
+		observation = env.reset()
+		done = False
+		with open("probsFinal.txt", "w") as f:
+			f.write(str(env))
+			x = np.reshape(observation,[1,D])
+			tfprob = sess.run(probability,feed_dict={observations: x})
+			f.write(str(np.reshape(tfprob[0][0:env.nHosts], [env.gridLength, env.gridLength])))
+			f.write("\nProb. of no action: " + str(tfprob[0][-1]))
+		with open("outputFinal.txt", "w") as f:
 			while not done:
 				f.write(str(env))
 				x = np.reshape(observation,[1,D])
@@ -241,7 +263,6 @@ def main(argv):
 			# Output final state.
 			f.write(str(env))
 			f.write("Reward: " + str(reward))
-		print("Wrote example to " + resultsFile)
 
 
 if __name__ == "__main__":
