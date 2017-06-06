@@ -23,6 +23,12 @@ def getAction(tfprob, env):
 	return action, y
 
 def main(argv):
+	# hyperparameters
+	H = 10 # number of hidden layer neurons
+	batch_size = 5 # every how many episodes to do a param update?
+	learning_rate = 1e-2 # feel free to play with this to train faster or more stably.
+	gamma = 0.99 # discount factor for reward
+	# hyperparameters that can be set with command line arguments.
 	environment = ''
 	gridLength = None
 	graphics = False
@@ -67,11 +73,6 @@ def main(argv):
 		raise ValueError("--env must be epidemic or cartpole.")
 
 
-	# hyperparameters
-	H = 10 # number of hidden layer neurons
-	batch_size = 5 # every how many episodes to do a param update?
-	learning_rate = 1e-2 # feel free to play with this to train faster or more stably.
-	gamma = 0.99 # discount factor for reward
 
 	tf.reset_default_graph()
 
@@ -227,10 +228,6 @@ def main(argv):
 					# Give a summary of how well our network is doing for each batch of episodes.
 					running_reward = reward_sum if running_reward is None else running_reward * 0.99 + reward_sum * 0.01
 					print('Average reward for episode %f.  Total average reward %f.' % (reward_sum/batch_size, running_reward/batch_size))
-
-					if reward_sum/batch_size > 200:
-						print("Task solved in",episode_number,'episodes!')
-						break
 
 					reward_sum = 0
 
