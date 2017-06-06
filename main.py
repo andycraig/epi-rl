@@ -24,7 +24,7 @@ def getAction(tfprob, env):
 
 def main(argv):
 	# hyperparameters
-	H = 10 # number of hidden layer neurons
+	H = 15 # number of hidden layer neurons
 	batch_size = 5 # every how many episodes to do a param update?
 	learning_rate = 1e-2 # feel free to play with this to train faster or more stably.
 	gamma = 0.99 # discount factor for reward
@@ -78,15 +78,16 @@ def main(argv):
 
 	#This defines the network as it goes from taking an observation of the environment to
 	#giving a prob of chosing to the action of moving left or right.
+	W = []
 	W1String = "W1"
 	W2String = "W2"
 	observations = tf.placeholder(tf.float32, [None,D] , name="input_x")
-	W1 = tf.get_variable(W1String, shape=[D, H],
-			   initializer=tf.contrib.layers.xavier_initializer())
-	layer1 = tf.nn.relu(tf.matmul(observations,W1))
-	W2 = tf.get_variable(W2String, shape=[H, nActions],
-			   initializer=tf.contrib.layers.xavier_initializer())
-	score = tf.matmul(layer1,W2)
+	W.append(tf.get_variable(W1String, shape=[D, H],
+			   initializer=tf.contrib.layers.xavier_initializer()))
+	layer1 = tf.nn.relu(tf.matmul(observations,W[0]))
+	W.append(tf.get_variable(W2String, shape=[H, nActions],
+			   initializer=tf.contrib.layers.xavier_initializer()))
+	score = tf.matmul(layer1,W[1])
 	probability = tf.nn.softmax(score)
 
 	#From here we define the parts of the network needed for learning a good policy.
@@ -139,8 +140,8 @@ def main(argv):
 		rendering = False
 		sess.run(init)
 		# Get the initial variable values, so we can compare them to the final values.
-		W1Init = sess.run(W1)
-		W2Init = sess.run(W2)
+		W1Init = sess.run(W[0])
+		W2Init = sess.run(W[1])
 
 		# Run the trained model on a sample and save to a file.
 		observation = env.reset()
@@ -235,8 +236,8 @@ def main(argv):
 
 		print(episode_number,'Episodes completed.')
 		# Get the final variable values.
-		W1Final = sess.run(W1)
-		W2Final = sess.run(W2)
+		W1Final = sess.run(W[0])
+		W2Final = sess.run(W[1])
 		#print("Initial value of ", W1String,":\n",W1Init)
 		#print("Initial value of ", W2String,":\n",W2Init)
 		#print("Final value of ", W1String,":\n",W1Final)
@@ -246,10 +247,13 @@ def main(argv):
 		done = False
 		with open("probsFinal.txt", "w") as f:
 			f.write(str(env))
+			print(str(env))
 			x = np.reshape(observation,[1,D])
 			tfprob = sess.run(probability,feed_dict={observations: x})
 			f.write(str(np.reshape(tfprob[0][0:env.nHosts], [env.gridLength, env.gridLength])))
+			print(str(np.reshape(tfprob[0][0:env.nHosts], [env.gridLength, env.gridLength])))
 			f.write("\nProb. of no action: " + str(tfprob[0][-1]))
+			print("\nProb. of no action: " + str(tfprob[0][-1]))
 		with open("outputFinal.txt", "w") as f:
 			while not done:
 				f.write(str(env))
