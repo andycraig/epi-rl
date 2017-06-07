@@ -80,15 +80,16 @@ def main(argv):
 	#giving a prob of chosing to the action of moving left or right.
 	W = []
 	layers = []
-	W1String = "W1"
-	W2String = "W2"
 	observations = tf.placeholder(tf.float32, [None,D] , name="input_x")
 	# From observations to hidden layer 0.
-	W.append(tf.get_variable(W1String, shape=[D, H[0]],
+	W.append(tf.get_variable("W"+str(0), shape=[D, H[0]],
 			   initializer=tf.contrib.layers.xavier_initializer()))
 	layers.append(tf.nn.relu(tf.matmul(observations,W[0])))
+	# Intermediate layers.
+	for iLayer in range(1, len(H)):
+		pass
 	# From last hidden layer to output.
-	W.append(tf.get_variable(W2String, shape=[H[-1], nActions],
+	W.append(tf.get_variable("W"+str(1), shape=[H[-1], nActions],
 			   initializer=tf.contrib.layers.xavier_initializer()))
 	score = tf.matmul(layers[-1],W[1])
 	probability = tf.nn.softmax(score)
@@ -112,10 +113,10 @@ def main(argv):
 	# Once we have collected a series of gradients from multiple episodes, we apply them.
 	# We don't just apply gradients after every episode in order to account for noise in the reward signal.
 	adam = tf.train.AdamOptimizer(learning_rate=learning_rate) # Our optimizer
-	W1Grad = tf.placeholder(tf.float32,name="batch_grad1") # Placeholders to send the final gradients through when we update.
-	W2Grad = tf.placeholder(tf.float32,name="batch_grad2")
-	batchGrad = [W1Grad,W2Grad]
-	updateGrads = adam.apply_gradients(zip(batchGrad,tvars))
+	batchGrads = []
+	for iW in range(0,len(W)):
+		batchGrads.append(tf.placeholder(tf.float32,name="batch_grad"+str(iW))) # Placeholders to send the final gradients through when we update
+	updateGrads = adam.apply_gradients(zip(batchGrads,tvars))
 
 	#Advantage function
 	#This function allows us to weigh the rewards our agent recieves. In the context of the Cart-Pole task, we want actions that kept the pole in the air a long time to have a large reward, and actions that contributed to the pole falling to have a decreased or negative reward. We do this by weighing the rewards from the end of the episode, with actions at the end being seen as negative, since they likely contributed to the pole falling, and the episode ending. Likewise, early actions are seen as more positive, since they weren't responsible for the pole falling.
@@ -227,7 +228,8 @@ def main(argv):
 
 				# If we have completed enough episodes, then update the policy network with our gradients.
 				if episode_number % batch_size == 0:
-					sess.run(updateGrads,feed_dict={W1Grad: gradBuffer[0],W2Grad:gradBuffer[1]})
+					# Was: sess.run(updateGrads,feed_dict={W1Grad: gradBuffer[0],W2Grad:gradBuffer[1]})
+					sess.run(updateGrads,feed_dict=dict(zip(batchGrads, gradBuffer)))
 					for ix,grad in enumerate(gradBuffer):
 						gradBuffer[ix] = grad * 0
 
