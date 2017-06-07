@@ -149,22 +149,23 @@ def main(argv):
 		# Run the trained model on a sample and save to a file.
 		observation = env.reset()
 		done = False
-		with open("probsInitial.txt", "w") as f:
-			f.write(str(env))
-			x = np.reshape(observation,[1,D])
-			tfprob = sess.run(probability,feed_dict={observations: x})
-			f.write(str(np.reshape(tfprob[0][0:env.nHosts], [env.gridLength, env.gridLength])))
-			f.write("\nProb. of no action: " + str(tfprob[0][-1]))
-		with open("outputInitial.txt", "w") as f:
-			while not done:
+		if environment == 'epidemic':
+			with open("probsInitial.txt", "w") as f:
 				f.write(str(env))
 				x = np.reshape(observation,[1,D])
 				tfprob = sess.run(probability,feed_dict={observations: x})
-				action, y = getAction(tfprob, environment)
-				observation, reward, done, info = env.step(action)
-			# Output final state.
-			f.write(str(env))
-			f.write("Reward: " + str(reward))
+				f.write(str(np.reshape(tfprob[0][0:env.nHosts], [env.gridLength, env.gridLength])))
+				f.write("\nProb. of no action: " + str(tfprob[0][-1]))
+			with open("outputInitial.txt", "w") as f:
+				while not done:
+					f.write(str(env))
+					x = np.reshape(observation,[1,D])
+					tfprob = sess.run(probability,feed_dict={observations: x})
+					action, y = getAction(tfprob, environment)
+					observation, reward, done, info = env.step(action)
+				# Output final state.
+				f.write(str(env))
+				f.write("Reward: " + str(reward))
 
 		observation = env.reset() # Obtain an initial observation of the environment
 
@@ -213,10 +214,11 @@ def main(argv):
 				# compute the discounted reward backwards through time
 				discounted_epr = discount_rewards(epr)
 				# size the rewards to be unit normal (helps control the gradient estimator variance)
-				#discounted_epr -= np.mean(discounted_epr)
-				#TODO Next bit fails if no reward. Scaling is probably unnecessary if there is no reward?
-				#if np.std(discounted_epr) > 0:
-				#	discounted_epr /= np.std(discounted_epr)
+				if environment == "cartpole":
+					discounted_epr -= np.mean(discounted_epr)
+					#TODO Next bit fails if no reward. Scaling is probably unnecessary if there is no reward?
+					if np.std(discounted_epr) > 0:
+						discounted_epr /= np.std(discounted_epr)
 
 				# Get the gradient for this episode, and save it in the gradBuffer
 				tGrad = sess.run(newGrads,feed_dict={observations: epx, input_y: epy, advantages: discounted_epr})
