@@ -80,8 +80,6 @@ def main(argv):
 	#giving a prob of chosing to the action of moving left or right.
 	W = []
 	layers = []
-	W1String = "W1"
-	W2String = "W2"
 	observations = tf.placeholder(tf.float32, [None,D] , name="input_x")
 	# From observations to hidden layer 0.
 	W.append(tf.get_variable("W0", shape=[D, H[0]],
@@ -97,6 +95,8 @@ def main(argv):
 			   initializer=tf.contrib.layers.xavier_initializer()))
 	score = tf.matmul(layers[-1],W[1])
 	probability = tf.nn.softmax(score)
+
+	print("\n\n\probability: " + str(probability) + "\n\n")
 
 	#From here we define the parts of the network needed for learning a good policy.
 	tvars = tf.trainable_variables()
@@ -117,9 +117,13 @@ def main(argv):
 	# Once we have collected a series of gradients from multiple episodes, we apply them.
 	# We don't just apply gradients after every episode in order to account for noise in the reward signal.
 	adam = tf.train.AdamOptimizer(learning_rate=learning_rate) # Our optimizer
-	W1Grad = tf.placeholder(tf.float32,name="batch_grad1") # Placeholders to send the final gradients through when we update.
-	W2Grad = tf.placeholder(tf.float32,name="batch_grad2")
-	batchGrad = [W1Grad,W2Grad]
+	#W1Grad = tf.placeholder(tf.float32,name="batch_grad1") # Placeholders to send the final gradients through when we update.
+	#W2Grad = tf.placeholder(tf.float32,name="batch_grad2")
+	#batchGrad = [W1Grad,W2Grad]
+	batchGrad = []
+	for iLayer in range(len(H)):
+		batchGrad.append(tf.placeholder(tf.float32,name="batch_grad"+str(iLayer))) # Placeholders to send the final gradients through when we update.
+
 	updateGrads = adam.apply_gradients(zip(batchGrad,tvars))
 
 	#Advantage function
@@ -147,29 +151,27 @@ def main(argv):
 	with tf.Session() as sess:
 		rendering = False
 		sess.run(init)
-		# Get the initial variable values, so we can compare them to the final values.
-		W1Init = sess.run(W[0])
-		W2Init = sess.run(W[1])
 
-		# Run the trained model on a sample and save to a file.
-		observation = env.reset()
-		done = False
-		with open("probsInitial.txt", "w") as f:
-			f.write(str(env))
-			x = np.reshape(observation,[1,D])
-			tfprob = sess.run(probability,feed_dict={observations: x})
-			f.write(str(np.reshape(tfprob[0][0:env.nHosts], [env.gridLength, env.gridLength])))
-			f.write("\nProb. of no action: " + str(tfprob[0][-1]))
-		with open("outputInitial.txt", "w") as f:
-			while not done:
+		if environment == "epidemic":
+			# Run the trained model on a sample and save to a file.
+			observation = env.reset()
+			done = False
+			with open("probsInitial.txt", "w") as f:
 				f.write(str(env))
 				x = np.reshape(observation,[1,D])
 				tfprob = sess.run(probability,feed_dict={observations: x})
-				action, y = getAction(tfprob, environment)
-				observation, reward, done, info = env.step(action)
-			# Output final state.
-			f.write(str(env))
-			f.write("Reward: " + str(reward))
+				f.write(str(np.reshape(tfprob[0][0:env.nHosts], [env.gridLength, env.gridLength])))
+				f.write("\nProb. of no action: " + str(tfprob[0][-1]))
+			with open("outputInitial.txt", "w") as f:
+				while not done:
+					f.write(str(env))
+					x = np.reshape(observation,[1,D])
+					tfprob = sess.run(probability,feed_dict={observations: x})
+					action, y = getAction(tfprob, environment)
+					observation, reward, done, info = env.step(action)
+				# Output final state.
+				f.write(str(env))
+				f.write("Reward: " + str(reward))
 
 		observation = env.reset() # Obtain an initial observation of the environment
 
@@ -230,7 +232,9 @@ def main(argv):
 
 				# If we have completed enough episodes, then update the policy network with our gradients.
 				if episode_number % batch_size == 0:
-					sess.run(updateGrads,feed_dict={W1Grad: gradBuffer[0],W2Grad:gradBuffer[1]})
+					# TODO zip batchGrad (which contains W1Grad etc.) and gradBuffer together into a dict.
+					# Should just be dict(batchGrad, gradBuffer) ?
+					sess.run(updateGrads,feed_dict=dict(zip(batchGrad, gradBuffer)))
 					for ix,grad in enumerate(gradBuffer):
 						gradBuffer[ix] = grad * 0
 
@@ -243,35 +247,30 @@ def main(argv):
 				observation = env.reset()
 
 		print(episode_number,'Episodes completed.')
-		# Get the final variable values.
-		W1Final = sess.run(W[0])
-		W2Final = sess.run(W[1])
-		#print("Initial value of ", W1String,":\n",W1Init)
-		#print("Initial value of ", W2String,":\n",W2Init)
-		#print("Final value of ", W1String,":\n",W1Final)
-		#print("Final value of ", W2String,":\n",W2Final)
 		# Run the trained model on a sample and save to a file.
 		observation = env.reset()
-		done = False
-		with open("probsFinal.txt", "w") as f:
-			f.write(str(env))
-			print(str(env))
-			x = np.reshape(observation,[1,D])
-			tfprob = sess.run(probability,feed_dict={observations: x})
-			f.write(str(np.reshape(tfprob[0][0:env.nHosts], [env.gridLength, env.gridLength])))
-			print(str(np.reshape(tfprob[0][0:env.nHosts], [env.gridLength, env.gridLength])))
-			f.write("\nProb. of no action: " + str(tfprob[0][-1]))
-			print("\nProb. of no action: " + str(tfprob[0][-1]))
-		with open("outputFinal.txt", "w") as f:
-			while not done:
+
+		if environment == "epidemic":
+			done = False
+			with open("probsFinal.txt", "w") as f:
 				f.write(str(env))
+				print(str(env))
 				x = np.reshape(observation,[1,D])
 				tfprob = sess.run(probability,feed_dict={observations: x})
-				action, y = getAction(tfprob, environment)
-				observation, reward, done, info = env.step(action)
-			# Output final state.
-			f.write(str(env))
-			f.write("Reward: " + str(reward))
+				f.write(str(np.reshape(tfprob[0][0:env.nHosts], [env.gridLength, env.gridLength])))
+				print(str(np.reshape(tfprob[0][0:env.nHosts], [env.gridLength, env.gridLength])))
+				f.write("\nProb. of no action: " + str(tfprob[0][-1]))
+				print("\nProb. of no action: " + str(tfprob[0][-1]))
+			with open("outputFinal.txt", "w") as f:
+				while not done:
+					f.write(str(env))
+					x = np.reshape(observation,[1,D])
+					tfprob = sess.run(probability,feed_dict={observations: x})
+					action, y = getAction(tfprob, environment)
+					observation, reward, done, info = env.step(action)
+				# Output final state.
+				f.write(str(env))
+				f.write("Reward: " + str(reward))
 
 
 if __name__ == "__main__":
