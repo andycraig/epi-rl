@@ -24,7 +24,7 @@ def getAction(tfprob, env):
 
 def main(argv):
 	# hyperparameters
-	H = [15] # number of hidden layer neurons
+	H = [5] # number of hidden layer neurons
 	batch_size = 5 # every how many episodes to do a param update?
 	learning_rate = 1e-2 # feel free to play with this to train faster or more stably.
 	gamma = 0.99 # discount factor for reward
@@ -82,21 +82,29 @@ def main(argv):
 	layers = []
 	observations = tf.placeholder(tf.float32, [None,D] , name="input_x")
 	# From observations to hidden layer 0.
-	W.append(tf.get_variable("W0", shape=[D, H[0]],
+	shape = [D, H[0]]
+	print("Creating: observation-hidden layer 0 with shape " + str(shape))
+	W.append(tf.get_variable("W0", shape=shape,
 			   initializer=tf.contrib.layers.xavier_initializer()))
 	layers.append(tf.nn.relu(tf.matmul(observations,W[0])))
-	# Intermediate layers.
-	for iLayer in range(1, len(H)):
-		W.append(tf.get_variable("W"+str(iLayer), shape=[H[iLayer-1], H[iLayer]],
-				   initializer=tf.contrib.layers.xavier_initializer()))
-		layers.append(tf.nn.relu(tf.matmul(observations,W[iLayer-1])))
+	# Intermediate layers
+	# for iLayer in range(1, len(H)):
+	# 	shape = [H[iLayer-1], H[iLayer]]
+	# 	print("Creating: hidden layer " + str(iLayer-1) + "-" + str(iLayer) + " with shape " + str(shape))
+	# 	W.append(tf.get_variable("W"+str(iLayer), shape=shape,
+	# 			   initializer=tf.contrib.layers.xavier_initializer()))
+	# 	layers.append(tf.nn.relu(tf.matmul(W[iLayer-1],W[iLayer])))
 	# From last hidden layer to output.
-	W.append(tf.get_variable("W"+str(len(H)), shape=[H[-1], nActions],
+	# Was: [H, nActions]
+	shape = [H[-1], nActions]
+	print("Creating: final layer with shape " + str(shape))
+	W.append(tf.get_variable("W"+str(len(H)), shape=shape,
 			   initializer=tf.contrib.layers.xavier_initializer()))
-	score = tf.matmul(layers[-1],W[1])
+	# Was: tf.matmul(layer1,W2)
+	score = tf.matmul(W[-2],W[-1])
 	probability = tf.nn.softmax(score)
 
-	print("\n\n\probability: " + str(probability) + "\n\n")
+	print("\n\nprobability: " + str(probability) + "\n\n")
 
 	#From here we define the parts of the network needed for learning a good policy.
 	tvars = tf.trainable_variables()
@@ -226,6 +234,7 @@ def main(argv):
 				#	discounted_epr /= np.std(discounted_epr)
 
 				# Get the gradient for this episode, and save it in the gradBuffer
+				print(epy)
 				tGrad = sess.run(newGrads,feed_dict={observations: epx, input_y: epy, advantages: discounted_epr})
 				for ix,grad in enumerate(tGrad):
 					gradBuffer[ix] += grad
