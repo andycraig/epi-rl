@@ -118,6 +118,10 @@ def main(argv):
 	# tf.log()
 	# For example, if input_y is [0, 1, 0] and probability is [.1, .8, .1], we should get
 	# tf.log()
+	print("input_y dimensions:")
+	print(input_y.get_shape())
+	print("probability dimensions:")
+	print(probability.get_shape())
 	loglik = tf.log(tf.reduce_sum(tf.mul(input_y, probability)))
 	loss = -tf.reduce_mean(loglik * advantages)
 	newGrads = tf.gradients(loss,tvars)
