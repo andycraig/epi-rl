@@ -151,11 +151,13 @@ def main(argv):
 			observation = env.reset()
 			done = False
 			with open("probsInitial.txt", "w") as f:
-				f.write(str(env))
-				x = np.reshape(observation,[1,D])
-				tfprob = sess.run(probability,feed_dict={observations: x})
-				f.write(str(np.reshape(tfprob[0][0:env.nHosts], [env.gridLength, env.gridLength])))
-				f.write("\nProb. of no action: " + str(tfprob[0][-1]))
+				for iOutputs in range(4):
+					f.write(str(env))
+					x = np.reshape(observation,[1,D])
+					tfprob = sess.run(probability,feed_dict={observations: x})
+					f.write(str(np.reshape(tfprob[0][0:env.nHosts], [env.gridLength, env.gridLength])))
+					f.write("\nProb. of no action: " + str(tfprob[0][-1]) + "\n")
+				observation = env.reset()
 			with open("outputInitial.txt", "w") as f:
 				while not done:
 					f.write(str(env))
@@ -248,14 +250,16 @@ def main(argv):
 		if environment == "epidemic":
 			done = False
 			with open("probsFinal.txt", "w") as f:
-				f.write(str(env))
-				print(str(env))
-				x = np.reshape(observation,[1,D])
-				tfprob = sess.run(probability,feed_dict={observations: x})
-				f.write(str(np.reshape(tfprob[0][0:env.nHosts], [env.gridLength, env.gridLength])))
-				print(str(np.reshape(tfprob[0][0:env.nHosts], [env.gridLength, env.gridLength])))
-				f.write("\nProb. of no action: " + str(tfprob[0][-1]))
-				print("\nProb. of no action: " + str(tfprob[0][-1]))
+				for iOutput in range(4):
+					f.write(str(env))
+					print(str(env))
+					x = np.reshape(observation,[1,D])
+					tfprob = sess.run(probability,feed_dict={observations: x})
+					f.write(str(np.reshape(tfprob[0][0:env.nHosts], [env.gridLength, env.gridLength])))
+					print(str(np.reshape(tfprob[0][0:env.nHosts], [env.gridLength, env.gridLength])))
+					f.write("\nProb. of no action: " + str(tfprob[0][-1]))
+					print("\nProb. of no action: " + str(tfprob[0][-1]))
+					observation = env.reset()
 			with open("outputFinal.txt", "w") as f:
 				while not done:
 					f.write(str(env))
