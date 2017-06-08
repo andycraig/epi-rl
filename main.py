@@ -87,11 +87,13 @@ def main(argv):
 	layers.append(tf.nn.relu(tf.matmul(observations,W[0])))
 	# Intermediate layers.
 	for iLayer in range(1, len(H)):
-		pass
+		W.append(tf.get_variable("W"+str(iLayer), shape=[H[iLayer-1], H[iLayer]],
+				   initializer=tf.contrib.layers.xavier_initializer()))
+		layers.append(tf.matmul(layers[iLayer],W[iLayer]))
 	# From last hidden layer to output.
 	W.append(tf.get_variable("W"+str(1), shape=[H[-1], nActions],
 			   initializer=tf.contrib.layers.xavier_initializer()))
-	score = tf.matmul(layers[-1],W[1])
+	score = tf.matmul(layers[-1],W[-1])
 	probability = tf.nn.softmax(score)
 
 	#From here we define the parts of the network needed for learning a good policy.
@@ -215,6 +217,7 @@ def main(argv):
 				# compute the discounted reward backwards through time
 				discounted_epr = discount_rewards(epr)
 				# size the rewards to be unit normal (helps control the gradient estimator variance)
+				# Seems to be vital for cartpole, and fatal for epidemic.
 				if environment == "cartpole":
 					discounted_epr -= np.mean(discounted_epr)
 					#TODO Next bit fails if no reward. Scaling is probably unnecessary if there is no reward?
