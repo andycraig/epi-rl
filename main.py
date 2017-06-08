@@ -24,7 +24,7 @@ def getAction(tfprob, env):
 
 def main(argv):
 	# hyperparameters
-	H = [5] # number of hidden layer neurons
+	H = [5, 5] # number of hidden layer neurons
 	batch_size = 5 # every how many episodes to do a param update?
 	learning_rate = 1e-2 # feel free to play with this to train faster or more stably.
 	gamma = 0.99 # discount factor for reward
@@ -82,26 +82,18 @@ def main(argv):
 	layers = []
 	observations = tf.placeholder(tf.float32, [None,D] , name="input_x")
 	# From observations to hidden layer 0.
-	shape = [D, H[0]]
-	print("Creating: observation-hidden layer 0 with shape " + str(shape))
-	W.append(tf.get_variable("W0", shape=shape,
+	W.append(tf.get_variable("W"+str(0), shape=[D, H[0]],
 			   initializer=tf.contrib.layers.xavier_initializer()))
 	layers.append(tf.nn.relu(tf.matmul(observations,W[0])))
-	# Intermediate layers
-	# for iLayer in range(1, len(H)):
-	# 	shape = [H[iLayer-1], H[iLayer]]
-	# 	print("Creating: hidden layer " + str(iLayer-1) + "-" + str(iLayer) + " with shape " + str(shape))
-	# 	W.append(tf.get_variable("W"+str(iLayer), shape=shape,
-	# 			   initializer=tf.contrib.layers.xavier_initializer()))
-	# 	layers.append(tf.nn.relu(tf.matmul(W[iLayer-1],W[iLayer])))
+	# Intermediate layers.
+	for iLayer in range(1, len(H)):
+		W.append(tf.get_variable("W"+str(iLayer), shape=[H[iLayer-1], H[iLayer]],
+				   initializer=tf.contrib.layers.xavier_initializer()))
+		layers.append(tf.matmul(layers[-1],W[-1]))
 	# From last hidden layer to output.
-	# Was: [H, nActions]
-	shape = [H[-1], nActions]
-	print("Creating: final layer with shape " + str(shape))
-	W.append(tf.get_variable("W"+str(len(H)), shape=shape,
+	W.append(tf.get_variable("W"+str(len(H)), shape=[H[-1], nActions],
 			   initializer=tf.contrib.layers.xavier_initializer()))
-	# Was: tf.matmul(layer1,W2)
-	score = tf.matmul(W[-2],W[-1])
+	score = tf.matmul(layers[-1],W[-1])
 	probability = tf.nn.softmax(score)
 
 	print("\n\nprobability: " + str(probability) + "\n\n")
@@ -129,14 +121,10 @@ def main(argv):
 	# Once we have collected a series of gradients from multiple episodes, we apply them.
 	# We don't just apply gradients after every episode in order to account for noise in the reward signal.
 	adam = tf.train.AdamOptimizer(learning_rate=learning_rate) # Our optimizer
-	#W1Grad = tf.placeholder(tf.float32,name="batch_grad1") # Placeholders to send the final gradients through when we update.
-	#W2Grad = tf.placeholder(tf.float32,name="batch_grad2")
-	#batchGrad = [W1Grad,W2Grad]
-	batchGrad = []
-	for iLayer in range(len(H)):
-		batchGrad.append(tf.placeholder(tf.float32,name="batch_grad"+str(iLayer))) # Placeholders to send the final gradients through when we update.
-
-	updateGrads = adam.apply_gradients(zip(batchGrad,tvars))
+	batchGrads = []
+	for iW in range(0,len(W)):
+		batchGrads.append(tf.placeholder(tf.float32,name="batch_grad"+str(iW))) # Placeholders to send the final gradients through when we update
+	updateGrads = adam.apply_gradients(zip(batchGrads,tvars))
 
 	#Advantage function
 	#This function allows us to weigh the rewards our agent recieves. In the context of the Cart-Pole task, we want actions that kept the pole in the air a long time to have a large reward, and actions that contributed to the pole falling to have a decreased or negative reward. We do this by weighing the rewards from the end of the episode, with actions at the end being seen as negative, since they likely contributed to the pole falling, and the episode ending. Likewise, early actions are seen as more positive, since they weren't responsible for the pole falling.
@@ -232,10 +220,12 @@ def main(argv):
 				# compute the discounted reward backwards through time
 				discounted_epr = discount_rewards(epr)
 				# size the rewards to be unit normal (helps control the gradient estimator variance)
-				#discounted_epr -= np.mean(discounted_epr)
-				#TODO Next bit fails if no reward. Scaling is probably unnecessary if there is no reward?
-				#if np.std(discounted_epr) > 0:
-				#	discounted_epr /= np.std(discounted_epr)
+				# Seems to be vital for cartpole, and fatal for epidemic.
+				if environment == "cartpole":
+					discounted_epr -= np.mean(discounted_epr)
+					#TODO Next bit fails if no reward. Scaling is probably unnecessary if there is no reward?
+					if np.std(discounted_epr) > 0:
+						discounted_epr /= np.std(discounted_epr)
 
 				# Get the gradient for this episode, and save it in the gradBuffer
 				print(epy)
@@ -245,9 +235,8 @@ def main(argv):
 
 				# If we have completed enough episodes, then update the policy network with our gradients.
 				if episode_number % batch_size == 0:
-					# TODO zip batchGrad (which contains W1Grad etc.) and gradBuffer together into a dict.
-					# Should just be dict(batchGrad, gradBuffer) ?
-					sess.run(updateGrads,feed_dict=dict(zip(batchGrad, gradBuffer)))
+					# Was: sess.run(updateGrads,feed_dict={W1Grad: gradBuffer[0],W2Grad:gradBuffer[1]})
+					sess.run(updateGrads,feed_dict=dict(zip(batchGrads, gradBuffer)))
 					for ix,grad in enumerate(gradBuffer):
 						gradBuffer[ix] = grad * 0
 
