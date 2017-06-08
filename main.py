@@ -96,8 +96,6 @@ def main(argv):
 	score = tf.matmul(layers[-1],W[-1])
 	probability = tf.nn.softmax(score)
 
-	print("\n\nprobability: " + str(probability) + "\n\n")
-
 	#From here we define the parts of the network needed for learning a good policy.
 	tvars = tf.trainable_variables()
 	input_y = tf.placeholder(tf.float32,[None,nActions], name="input_y")
@@ -110,10 +108,6 @@ def main(argv):
 	# tf.log()
 	# For example, if input_y is [0, 1, 0] and probability is [.1, .8, .1], we should get
 	# tf.log()
-	print("input_y dimensions:")
-	print(input_y.get_shape())
-	print("probability dimensions:")
-	print(probability.get_shape())
 	loglik = tf.log(tf.reduce_sum(tf.mul(input_y, probability)))
 	loss = -tf.reduce_mean(loglik * advantages)
 	newGrads = tf.gradients(loss,tvars)
@@ -228,7 +222,6 @@ def main(argv):
 						discounted_epr /= np.std(discounted_epr)
 
 				# Get the gradient for this episode, and save it in the gradBuffer
-				print(epy)
 				tGrad = sess.run(newGrads,feed_dict={observations: epx, input_y: epy, advantages: discounted_epr})
 				for ix,grad in enumerate(tGrad):
 					gradBuffer[ix] += grad
