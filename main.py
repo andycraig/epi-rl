@@ -219,8 +219,9 @@ def main(argv):
 				discounted_epr = discount_rewards(epr)
 				# size the rewards to be unit normal (helps control the gradient estimator variance)
 				# Seems to be vital for cartpole, and fatal for epidemic.
-				if environment == "cartpole":
+				if batch_size > 1:
 					discounted_epr -= np.mean(discounted_epr)
+				if environment == "cartpole":
 					#TODO Next bit fails if no reward. Scaling is probably unnecessary if there is no reward?
 					if np.std(discounted_epr) > 0:
 						discounted_epr /= np.std(discounted_epr)
