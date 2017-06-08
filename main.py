@@ -24,8 +24,7 @@ def getAction(tfprob, env):
 
 def main(argv):
 	# hyperparameters
-	H = [5, 5] # number of hidden layer neurons
-	batch_size = 5 # every how many episodes to do a param update?
+	H = [5] # number of hidden layer neurons
 	learning_rate = 1e-2 # feel free to play with this to train faster or more stably.
 	gamma = 0.99 # discount factor for reward
 	# hyperparameters that can be set with command line arguments.
@@ -34,8 +33,9 @@ def main(argv):
 	graphics = False
 	total_episodes = 10000
 	timeRemaining = 5
+	batch_size = 5 # every how many episodes to do a param update?
 	try:
-		opts, args = getopt.getopt(argv,"e:h:n:t:g",["env=","hostlength=","nepisodes=","timeremaining=","graphics="])
+		opts, args = getopt.getopt(argv,"e:h:n:t:b:g",["env=","hostlength=","nepisodes=","timeremaining=","batchsize=","graphics="])
 	except getopt.GetoptError:
 		print('main.py -e <environment> -g')
 		sys.exit(2)
@@ -48,6 +48,8 @@ def main(argv):
 			timeRemaining = int(arg)
 		elif opt in ("-n", "--nepisodes"):
 			total_episodes = int(arg)
+		elif opt in ("-b", "--batchsize"):
+			batch_size = int(arg)
 		elif opt in ("-g", "--graphics"):
 			graphics = True
 	if environment == 'epidemic':
@@ -138,7 +140,7 @@ def main(argv):
 	xs,hs,dlogps,drs,ys,tfps = [],[],[],[],[],[]
 	running_reward = None
 	reward_sum = 0
-	episode_number = 1
+	episode_number = 0
 	init = tf.initialize_all_variables()
 
 	# Launch the graph
@@ -178,6 +180,7 @@ def main(argv):
 			gradBuffer[ix] = grad * 0
 
 		while episode_number <= total_episodes:
+			episode_number += 1
 
 			# Rendering the environment slows things down,
 			# so let's only look at it once our agent is doing a good job.
@@ -205,7 +208,6 @@ def main(argv):
 			drs.append(reward) # record reward (has to be done after we call step() to get reward for previous action)
 
 			if done:
-				episode_number += 1
 				# stack together all inputs, hidden states, action gradients, and rewards for this episode
 				epx = np.vstack(xs)
 				epy = np.vstack(ys)
@@ -238,6 +240,18 @@ def main(argv):
 					# Give a summary of how well our network is doing for each batch of episodes.
 					running_reward = reward_sum if running_reward is None else running_reward * 0.99 + reward_sum * 0.01
 					print('Average reward for episode %f.  Total average reward %f.' % (reward_sum/batch_size, running_reward/batch_size))
+					if batch_size == 1:
+						print("Observation was: \n")
+						print(x, "\n")
+						print("Probabilities were: \n")
+						print(tfprob, "\n")
+						print("Action chosen was: \n")
+						print(action, ("(no action)" if action==nActions else ""), "\n")
+						print("Reward (advantage) was: \n")
+						print(discounted_epr, "\n")
+						print("After update, probabilities would be: \n")
+						probabilitiesWouldBe = sess.run(probability,feed_dict={observations: np.reshape(observation,[1,D])})
+						print(probabilitiesWouldBe)
 
 					reward_sum = 0
 
