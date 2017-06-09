@@ -7,12 +7,26 @@ import sys
 import getopt
 
 def getAction(tfprob, env):
+	# y is
 	# tfprob and y should match up.
 	# tfprob [1.] should give action = 0, y = [1]
 	# tfprob [0.] should give action = 1, y = [0]
 	# TODO Change from np.random.multinomial, which is very slow.
 	pvals = tfprob[0]
-	y = np.random.multinomial(n=1, pvals=pvals)
+	try:
+		y = np.random.multinomial(n=1, pvals=pvals)
+	except ValueError as e:
+		# Sometimes if one probability is very large, numerical imprecision
+		# results in sum(pvals) > 1 and there is a ValueError.
+		# In this case, just take the largest value.
+		action, pmax = max(enumerate(pvals), key=lambda x: x[1])
+		if pmax < 0.75:
+			print(pvals)
+			raise ValueError("There was a ValueError, and largest prob was " + str(pmax) + " < 0.75.")
+		else:
+			print("Deterministic action to avoid error.")
+			# y is one-hot of action.
+			y = np.eye(len(pvals))[action,]
 	if env == 'cartpole':
 		action = 1 if (y == np.array([0,1])).all() else 0
 	elif env == 'epidemic':
