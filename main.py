@@ -216,15 +216,22 @@ def main(argv):
 				xs,hs,dlogps,drs,ys,tfps = [],[],[],[],[],[] # reset array memory
 
 				# compute the discounted reward backwards through time
+				print("epr: ", epr)
 				discounted_epr = discount_rewards(epr)
+				print("discount_epr: ", discounted_epr)
 				# size the rewards to be unit normal (helps control the gradient estimator variance)
 				# Seems to be vital for cartpole, and fatal for epidemic.
-				if batch_size > 1:
+				if environment == "epidemic":
+					if timeRemaining == 1:
+						# Adjust for hand-calculated 'expected' reward.
+						# 'Expect' to either get reward for all hosts, or reward for all but one.
+						discounted_epr -= 1.0 * ((env.nHosts - 1)**2 + env.Hosts) / (env.nHosts**2)
+				elif environment == "cartpole":
 					discounted_epr -= np.mean(discounted_epr)
-				if environment == "cartpole":
 					#TODO Next bit fails if no reward. Scaling is probably unnecessary if there is no reward?
 					if np.std(discounted_epr) > 0:
 						discounted_epr /= np.std(discounted_epr)
+				print("After normalising, discounted_epr: ", discounted_epr)
 
 				# Get the gradient for this episode, and save it in the gradBuffer
 				tGrad = sess.run(newGrads,feed_dict={observations: epx, input_y: epy, advantages: discounted_epr})
@@ -240,7 +247,7 @@ def main(argv):
 
 					# Give a summary of how well our network is doing for each batch of episodes.
 					running_reward = reward_sum if running_reward is None else running_reward * 0.99 + reward_sum * 0.01
-					print('Average reward for episode %f.  Total average reward %f.' % (reward_sum/batch_size, running_reward/batch_size))
+					print('Ep %i/%i: discounted_epr: %f. Avg reward: %f. Total avg reward %f.' % (episode_number, total_episodes, discounted_epr, reward_sum/batch_size, running_reward/batch_size))
 					if batch_size == 1:
 						print("Observation was: \n")
 						print(x, "\n")

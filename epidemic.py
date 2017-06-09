@@ -68,18 +68,22 @@ class Epidemic():
 		self.hostGrid = newHostGrid
 		# Create return values.
 		observation = self.observe()
-		# Epidemic is finished if time has run out.
-		done = self.timeRemaining <= 0
-		if done:
-			# Reward based on number of S hosts.
-			if self.rewardForAnyNonI:
-				reward = sum(np.array(newHostGrid) != SIR_I)/self.nHosts # Higher reward for more S hosts
-			else:
-				reward = sum(np.array(newHostGrid) == SIR_S)/self.nHosts # Higher reward for more S hosts
-		else:
-			reward = 0
+		done = self.isDone()
+		reward = self.getReward()
 		info = None
 		return observation, reward, done, info
+	def isDone(self):
+		# Epidemic is finished if time has run out.
+		return self.timeRemaining <= 0
+	def getReward(self):
+		if self.isDone():
+			# Reward based on number of S hosts.
+			if self.rewardForAnyNonI:
+				reward = sum(np.array(self.hostGrid) != SIR_I)/self.nHosts # Higher reward for more S hosts
+			else:
+				reward = sum(np.array(self.hostGrid) == SIR_S)/self.nHosts # Higher reward for more S hosts
+		else:
+			reward = 0
 	def getNumInfectedNeighbours(self, host):
 		infectedNeighbours = 0
 		for neighbourOffset in [-1, +1, -self.gridLength, +self.gridLength]:
