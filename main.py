@@ -179,7 +179,7 @@ def main(argv):
 		for ix,grad in enumerate(gradBuffer):
 			gradBuffer[ix] = grad * 0
 
-		while episode_number <= total_episodes:
+		while episode_number < total_episodes:
 			episode_number += 1
 
 			# Rendering the environment slows things down,
@@ -216,22 +216,19 @@ def main(argv):
 				xs,hs,dlogps,drs,ys,tfps = [],[],[],[],[],[] # reset array memory
 
 				# compute the discounted reward backwards through time
-				print("epr: ", epr)
 				discounted_epr = discount_rewards(epr)
-				print("discount_epr: ", discounted_epr)
 				# size the rewards to be unit normal (helps control the gradient estimator variance)
 				# Seems to be vital for cartpole, and fatal for epidemic.
 				if environment == "epidemic":
 					if timeRemaining == 1:
 						# Adjust for hand-calculated 'expected' reward.
 						# 'Expect' to either get reward for all hosts, or reward for all but one.
-						discounted_epr -= 1.0 * ((env.nHosts - 1)**2 + env.Hosts) / (env.nHosts**2)
+						discounted_epr -= 1.0 * ((env.nHosts - 1)**2 + env.nHosts) / (env.nHosts**2)
 				elif environment == "cartpole":
 					discounted_epr -= np.mean(discounted_epr)
 					#TODO Next bit fails if no reward. Scaling is probably unnecessary if there is no reward?
 					if np.std(discounted_epr) > 0:
 						discounted_epr /= np.std(discounted_epr)
-				print("After normalising, discounted_epr: ", discounted_epr)
 
 				# Get the gradient for this episode, and save it in the gradBuffer
 				tGrad = sess.run(newGrads,feed_dict={observations: epx, input_y: epy, advantages: discounted_epr})
@@ -247,17 +244,23 @@ def main(argv):
 
 					# Give a summary of how well our network is doing for each batch of episodes.
 					running_reward = reward_sum if running_reward is None else running_reward * 0.99 + reward_sum * 0.01
-					print('Ep %i/%i: discounted_epr: %f. Avg reward: %f. Total avg reward %f.' % (episode_number, total_episodes, discounted_epr, reward_sum/batch_size, running_reward/batch_size))
-					if batch_size == 1:
-						print("Observation was: \n")
-						print(x, "\n")
-						print("Probabilities were: \n")
-						print(tfprob, "\n")
-						print("Action chosen was: \n")
-						print(action, ("(no action)" if action==nActions else ""), "\n")
-						print("Reward (advantage) was: \n")
-						print(discounted_epr, "\n")
-						print("After update, probabilities would be: \n")
+					if len(discounted_epr) == 1:
+						print('Ep %i/%i: discounted_epr: %f. Avg reward: %f. Total avg reward %f.' % (episode_number, total_episodes, discounted_epr, reward_sum/batch_size, running_reward/batch_size))
+					else:
+						print('Ep %i/%i: Avg reward: %f. Total avg reward %f.' % (episode_number, total_episodes, reward_sum/batch_size, running_reward/batch_size))
+					if (batch_size == 1) and (episode_number == 1):
+						print("Observation was: ")
+						print(x)
+						print("Probabilities were: ")
+						print(tfprob)
+						print("Action chosen was: ")
+						if action == nActions:
+							print(action, " (no action)")
+						else:
+							print(action)
+						print("Reward (advantage) was: ")
+						print(discounted_epr)
+						print("After update, probabilities would be: ")
 						probabilitiesWouldBe = sess.run(probability,feed_dict={observations: np.reshape(observation,[1,D])})
 						print(probabilitiesWouldBe)
 
@@ -272,7 +275,7 @@ def main(argv):
 		if environment == "epidemic":
 			done = False
 			with open("probsFinal.txt", "w") as f:
-				for iOutput in range(4):
+				for iOutput in range(1):
 					f.write(str(env))
 					print(str(env))
 					x = np.reshape(observation,[1,D])

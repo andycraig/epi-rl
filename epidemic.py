@@ -84,6 +84,7 @@ class Epidemic():
 				reward = sum(np.array(self.hostGrid) == SIR_S)/self.nHosts # Higher reward for more S hosts
 		else:
 			reward = 0
+		return reward
 	def getNumInfectedNeighbours(self, host):
 		infectedNeighbours = 0
 		for neighbourOffset in [-1, +1, -self.gridLength, +self.gridLength]:
