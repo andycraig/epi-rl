@@ -79,7 +79,7 @@ def main(argv):
 						beta=beta,
 						CToI=1,
 						timeRemaining=timeRemaining,
-						rewardForAnyNonI=True,
+						rewardForAnyNonI=False,
 						initiallyCryptic=initiallyCryptic)
 		D = env.nHosts
 		nActions = env.nHosts + 1 # +1 for 'do nothing'.
@@ -298,25 +298,22 @@ def main(argv):
 			done = False
 			with open("probsFinal.txt", "w") as f:
 				for iOutput in range(1):
-					f.write(str(env))
-					print(str(env))
-					x = np.reshape(observation,[1,D])
-					tfprob = sess.run(probability,feed_dict={observations: x})
-					f.write(str(np.reshape(tfprob[0][0:env.nHosts], [env.gridLength, env.gridLength])))
-					print(str(np.reshape(tfprob[0][0:env.nHosts], [env.gridLength, env.gridLength])))
-					f.write("\nProb. of no action: " + str(tfprob[0][-1]))
-					print("\nProb. of no action: " + str(tfprob[0][-1]))
+					for iTime in range(timeRemaining):
+						f.write(str(env))
+						print(str(env))
+						x = np.reshape(observation,[1,D])
+						tfprob = sess.run(probability,feed_dict={observations: x})
+						f.write(str(np.reshape(tfprob[0][0:env.nHosts], [env.gridLength, env.gridLength])))
+						print(str(np.reshape(tfprob[0][0:env.nHosts], [env.gridLength, env.gridLength])))
+						f.write("Prob. of no action: " + str(tfprob[0][-1]))
+						print("Prob. of no action: " + str(tfprob[0][-1]))
+						action, y = getAction(tfprob, environment)
+						f.write("Took action: " + str(action))
+						print("Took action: " + str(action))
+						observation, reward, done, info = env.step(action)
+						f.write("Got reward: " + str(reward))
+						print("Got reward: " + str(reward))
 					observation = env.reset()
-			with open("outputFinal.txt", "w") as f:
-				while not done:
-					f.write(str(env))
-					x = np.reshape(observation,[1,D])
-					tfprob = sess.run(probability,feed_dict={observations: x})
-					action, y = getAction(tfprob, environment)
-					observation, reward, done, info = env.step(action)
-				# Output final state.
-				f.write(str(env))
-				f.write("Reward: " + str(reward))
 
 
 if __name__ == "__main__":
