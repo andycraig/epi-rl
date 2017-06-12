@@ -48,8 +48,9 @@ def main(argv):
 	total_episodes = 10000
 	timeRemaining = 5
 	batch_size = 5 # every how many episodes to do a param update?
+	beta = 0
 	try:
-		opts, args = getopt.getopt(argv,"e:h:n:t:b:g",["env=","hostlength=","nepisodes=","timeremaining=","batchsize=","graphics="])
+		opts, args = getopt.getopt(argv,"e:h:n:t:b:g",["env=","hostlength=","nepisodes=","timeremaining=","batchsize=","graphics=","beta="])
 	except getopt.GetoptError:
 		print('main.py -e <environment> -g')
 		sys.exit(2)
@@ -64,6 +65,8 @@ def main(argv):
 			total_episodes = int(arg)
 		elif opt in ("-b", "--batchsize"):
 			batch_size = int(arg)
+		elif opt in ("--beta"):
+			beta = int(arg)
 		elif opt in ("-g", "--graphics"):
 			graphics = True
 	if environment == 'epidemic':
@@ -71,7 +74,7 @@ def main(argv):
 		from epidemic import Epidemic
 		env = Epidemic(gridLength=gridLength,
 						epsilon=0,
-						beta=0,
+						beta=beta,
 						CToI=1,
 						timeRemaining=timeRemaining,
 						rewardForAnyNonI=True)
