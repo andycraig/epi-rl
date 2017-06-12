@@ -238,6 +238,8 @@ def main(argv):
 						# Adjust for hand-calculated 'expected' reward.
 						# 'Expect' to either get reward for all hosts, or reward for all but one.
 						discounted_epr -= 1.0 * ((env.nHosts - 1)**2 + env.nHosts) / (env.nHosts**2)
+						# Standardise to either -1 or 1.
+						#discounted_epr /= abs(discounted_epr)
 				elif environment == "cartpole":
 					discounted_epr -= np.mean(discounted_epr)
 					#TODO Next bit fails if no reward. Scaling is probably unnecessary if there is no reward?
