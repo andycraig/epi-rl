@@ -49,8 +49,9 @@ def main(argv):
 	timeRemaining = 5
 	batch_size = 5 # every how many episodes to do a param update?
 	beta = 0
+	initiallyCryptic = False
 	try:
-		opts, args = getopt.getopt(argv,"e:h:n:t:b:g",["env=","hostlength=","nepisodes=","timeremaining=","batchsize=","graphics=","beta="])
+		opts, args = getopt.getopt(argv,"e:h:n:t:b:g",["env=","hostlength=","nepisodes=","timeremaining=","batchsize=","graphics=","beta=","initiallycryptic="])
 	except getopt.GetoptError:
 		print('main.py -e <environment> -g')
 		sys.exit(2)
@@ -67,6 +68,8 @@ def main(argv):
 			batch_size = int(arg)
 		elif opt in ("--beta"):
 			beta = float(arg)
+		elif opt in ("--initiallycryptic"):
+			initiallyCryptic = True
 		elif opt in ("-g", "--graphics"):
 			graphics = True
 	if environment == 'epidemic':
@@ -77,7 +80,8 @@ def main(argv):
 						beta=beta,
 						CToI=1,
 						timeRemaining=timeRemaining,
-						rewardForAnyNonI=True)
+						rewardForAnyNonI=True,
+						initiallyCryptic=initiallyCryptic)
 		D = env.nHosts
 		nActions = env.nHosts + 1 # +1 for 'do nothing'.
 	elif environment == 'cartpole':
