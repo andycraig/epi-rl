@@ -43,18 +43,17 @@ def main(argv):
 	gamma = 0.99 # discount factor for reward
 	# hyperparameters that can be set with command line arguments.
 	environment = ''
-	gridLength = None
+	gridLength = 2
 	graphics = False
 	total_episodes = 10000
 	timeRemaining = 5
 	batch_size = 5 # every how many episodes to do a param update?
 	beta = 0
 	initiallyCryptic = False
-	try:
-		opts, args = getopt.getopt(argv,"e:h:n:t:b:g",["env=","hostlength=","nepisodes=","timeremaining=","batchsize=","graphics=","beta=","initiallycryptic="])
-	except getopt.GetoptError:
-		print('main.py -e <environment> -g')
-		sys.exit(2)
+	opts, args = getopt.getopt(argv,"e:h:n:t:b:g",
+									["env=","hostlength=","nepisodes=",
+									"timeremaining=","batchsize=","graphics",
+									"beta=","initiallyc"])
 	for opt, arg in opts:
 		if opt in ("-e", "--env"):
 			environment = arg
@@ -68,7 +67,7 @@ def main(argv):
 			batch_size = int(arg)
 		elif opt in ("--beta"):
 			beta = float(arg)
-		elif opt in ("--initiallycryptic"):
+		elif opt in ("--initiallyc"):
 			initiallyCryptic = True
 		elif opt in ("-g", "--graphics"):
 			graphics = True
