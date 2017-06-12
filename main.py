@@ -66,7 +66,7 @@ def main(argv):
 		elif opt in ("-b", "--batchsize"):
 			batch_size = int(arg)
 		elif opt in ("--beta"):
-			beta = int(arg)
+			beta = float(arg)
 		elif opt in ("-g", "--graphics"):
 			graphics = True
 	if environment == 'epidemic':
