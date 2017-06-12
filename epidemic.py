@@ -100,6 +100,8 @@ class Epidemic():
 			except:
 				pass
 		return infectedNeighbours
+	def getRandomAction(self):
+		return np.random.choice(self.nHosts + 1)
 	@staticmethod
 	def outputSample(fileName="sampleEpidemic.txt"):
 		timeRemaining = 10
