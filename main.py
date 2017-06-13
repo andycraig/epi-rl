@@ -161,7 +161,7 @@ def main(argv):
 	running_reward = None
 	reward_sum = 0
 	episode_number = 0
-	init = tf.initialize_all_variables()
+	init = tf.global_variables_initializer()
 
 	# Launch the graph
 	with tf.Session() as sess:
