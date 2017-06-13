@@ -1,4 +1,6 @@
-def discount_rewards(r):
+import numpy as np
+
+def discount_rewards(r, gamma):
 	""" take 1D float array of rewards and compute discounted reward """
 	discounted_r = np.zeros_like(r)
 	running_add = 0
