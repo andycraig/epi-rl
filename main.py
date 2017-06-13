@@ -83,17 +83,6 @@ def main(argv):
 						initiallyCryptic=initiallyCryptic)
 		D = env.nHosts
 		nActions = env.nHosts + 1 # +1 for 'do nothing'.
-		# Run some simulations to get an empirical estimate of mean and std deviation of reward.
-		randomRewards = np.zeros([10000])
-		for iRun in range(10000):
-			env.reset()
-			while not env.isDone():
-				_, reward, done, _ = env.step(env.getRandomAction())
-			randomRewards[iRun] = reward
-			print("Random run " + str(iRun) + ": reward is " + str(reward))
-		empiricalMean = randomRewards.mean()
-		empiricalStdDev = np.sqrt(randomRewards.var())
-		print("Empirical mean and std. dev.: " + str(empiricalMean) + "; " + str(empiricalStdDev))
 	elif environment == 'cartpole':
 		# Cartpole version.
 		import gym
@@ -251,12 +240,7 @@ def main(argv):
 				# size the rewards to be unit normal (helps control the gradient estimator variance)
 				# Seems to be vital for cartpole, and fatal for epidemic.
 				if environment == "epidemic":
-					# Adjust for hand-calculated 'expected' reward.
-					# 'Expect' to either get reward for all hosts, or reward for all but one.
-					#discounted_epr -= 1.0 * ((env.nHosts - 1)**2 + env.nHosts) / (env.nHosts**2)
-					discounted_epr = 1.0 * (discounted_epr - empiricalMean) / empiricalStdDev
-					# Standardise to either -1 or 1.
-					#discounted_epr /= abs(discounted_epr)
+					pass
 				elif environment == "cartpole":
 					discounted_epr -= np.mean(discounted_epr)
 					#TODO Next bit fails if no reward. Scaling is probably unnecessary if there is no reward?
