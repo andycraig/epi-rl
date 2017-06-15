@@ -14,7 +14,6 @@ def main(argv):
 	learning_rate = 1e-2 # feel free to play with this to train faster or more stably.
 	gamma = 0.99 # discount factor for reward
 	# hyperparameters that can be set with command line arguments.
-	environment = ''
 	gridLength = 2
 	graphics = False
 	total_episodes = 10000
@@ -22,14 +21,12 @@ def main(argv):
 	batch_size = 5 # every how many episodes to do a param update?
 	beta = 0
 	initiallyCryptic = False
-	opts, args = getopt.getopt(argv,"e:h:n:t:b:g",
-									["env=","hostlength=","nepisodes=",
+	opts, args = getopt.getopt(argv,"h:n:t:b:g",
+									["hostlength=","nepisodes=",
 									"timeremaining=","batchsize=",
 									"beta=","initiallyc"])
 	for opt, arg in opts:
-		if opt in ("-e", "--env"):
-			environment = arg
-		elif opt in ("-h", "--hostlength"):
+		if opt in ("-h", "--hostlength"):
 			gridLength = int(arg)
 		elif opt in ("-t", "--timeremaining"):
 			timeRemaining = int(arg)
@@ -41,33 +38,21 @@ def main(argv):
 			beta = float(arg)
 		elif opt in ("--initiallyc"):
 			initiallyCryptic = True
-	if environment == 'epidemic':
-		# Epidemic version.
-		from epidemic import Epidemic
-		env = Epidemic(gridLength=gridLength,
-						epsilon=0,
-						beta=beta,
-						CToI=1,
-						timeRemaining=timeRemaining,
-						rewardForAnyNonI=False,
-						initiallyCryptic=initiallyCryptic)
-		D = env.nHosts
-		nActions = env.nHosts + 1 # +1 for 'do nothing'.
-	elif environment == 'cartpole':
-		# Cartpole version.
-		import gym
-		env = gym.make('CartPole-v0')
-		D = 4 # input dimensionality
-		nActions = 2
-		if gridLength != None:
-			print("Ignoring hostlength argument for cartpole environment.")
-	else:
-		raise ValueError("--env must be epidemic or cartpole.")
+	# Epidemic version.
+	from epidemic import Epidemic
+	env = Epidemic(gridLength=gridLength,
+					epsilon=0,
+					beta=beta,
+					CToI=1,
+					timeRemaining=timeRemaining,
+					rewardForAnyNonI=False,
+					initiallyCryptic=initiallyCryptic)
+	D = env.nHosts
+	nActions = env.nHosts + 1 # +1 for 'do nothing'.
 
 	tf.reset_default_graph()
 	# Define placeholders.
 	observations_placeholder = tf.placeholder(tf.float32, [None,D], name="input_x")
-	nActions_placeholder = tf.placeholder(tf.int8, [1,1], name="nActions")
 	input_y_placeholder = tf.placeholder(tf.float32,[None,D], name="input_y")
 	advantages_placeholder = tf.placeholder(tf.float32,name="reward_signal")
 	# Set up network.
@@ -97,7 +82,7 @@ def main(argv):
 			# Purpose of action is soley to go into env.step().
 			tfprob = sess.run(probability,
 							feed_dict={observations_placeholder: x})
-			action, y = getAction(tfprob, environment)
+			action, y = getAction(tfprob)
 
 			xs.append(x) # observation
 			ys.append(y)
@@ -118,15 +103,9 @@ def main(argv):
 				discounted_epr = discount_rewards(epr, gamma=gamma)
 				# size the rewards to be unit normal (helps control the gradient estimator variance)
 				# Seems to be vital for cartpole, and fatal for epidemic.
-				if environment == "epidemic":
-					pass
-				elif environment == "cartpole":
-					discounted_epr -= np.mean(discounted_epr)
-					#TODO Next bit fails if no reward. Scaling is probably unnecessary if there is no reward?
-					if np.std(discounted_epr) > 0:
-						discounted_epr /= np.std(discounted_epr)
 
 				# TODO Append the epx, epy or something.
+				# TODO Adjust discount_epr in some way.
 
 				# If we have completed enough episodes, then update the policy network with our gradients.
 				if episode_number % batch_size == 0:
@@ -160,9 +139,7 @@ def main(argv):
 		# Run the trained model on a sample and save to a file.
 		observation = env.reset()
 
-		if environment == "epidemic":
-			#output(env, "policy_network", "outputFile.txt", timeRemaining, sess)
-			pass
+		output(env, probability, observations_placeholder, "outputFile.txt", sess)
 
 if __name__ == "__main__":
 	  main(sys.argv[1:])

@@ -10,7 +10,7 @@ def discount_rewards(r, gamma):
 		discounted_r[t] = running_add
 	return discounted_r
 
-def getAction(tfprob, env):
+def getAction(tfprob):
 	# y is
 	# tfprob and y should match up.
 	# tfprob [1.] should give action = 0, y = [1]
@@ -31,35 +31,30 @@ def getAction(tfprob, env):
 			print("Deterministic action to avoid error.")
 			# y is one-hot of action.
 			y = np.eye(len(pvals))[action,]
-	if env == 'cartpole':
-		action = 1 if (y == np.array([0,1])).all() else 0
-	elif env == 'epidemic':
-		try:
-			action = np.asscalar(np.where(y == 1)[0])
-		except ValueError:
-			print("ValueError! y was ", y)
+	try:
+		action = np.asscalar(np.where(y == 1)[0])
+	except ValueError:
+		print("ValueError! y was ", y)
 	return action, y
 
-def output(env, scopeName, fileName, timeRemaining, sess):
-	with tf.name_scope(scopeName):
-		observation = env.reset()
-		done = False
-		with open(fileName, "w") as f:
-			for iOutput in range(1):
-				for iTime in range(timeRemaining):
-					f.write(str(env))
-					print(str(env))
-					x = np.reshape(observation,[1,len(observation)])
-					print(probability.name)
-					tfprob = sess.run(probability,feed_dict={observations: x})
-					f.write(str(np.reshape(tfprob[0][0:env.nHosts], [env.gridLength, env.gridLength])))
-					print(str(np.reshape(tfprob[0][0:env.nHosts], [env.gridLength, env.gridLength])))
-					f.write("Prob. of no action: " + str(tfprob[0][-1]))
-					print("Prob. of no action: " + str(tfprob[0][-1]))
-					action, y = getAction(tfprob, environment)
-					f.write("Took action: " + str(action))
-					print("Took action: " + str(action))
-					observation, reward, done, info = env.step(action)
-					f.write("Got reward: " + str(reward))
-					print("Got reward: " + str(reward))
-				observation = env.reset()
+def output(env, probability, observations_placeholder, fileName, sess):
+	observation = env.reset()
+	done = False
+	with open(fileName, "w") as f:
+		for iOutput in range(1):
+			while not done:
+				f.write(str(env))
+				print(str(env))
+				x = np.reshape(observation,[1,len(observation)])
+				tfprob = sess.run(probability,feed_dict={observations_placeholder: x})
+				f.write(str(np.reshape(tfprob[0][0:env.nHosts], [env.gridLength, env.gridLength])))
+				print(str(np.reshape(tfprob[0][0:env.nHosts], [env.gridLength, env.gridLength])))
+				f.write("Prob. of no action: " + str(tfprob[0][-1]))
+				print("Prob. of no action: " + str(tfprob[0][-1]))
+				action, y = getAction(tfprob)
+				f.write("Took action: " + str(action))
+				print("Took action: " + str(action))
+				observation, reward, done, info = env.step(action)
+				f.write("Got reward: " + str(reward))
+				print("Got reward: " + str(reward))
+			observation = env.reset()
