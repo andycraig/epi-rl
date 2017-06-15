@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 
-H = [7]
+H = [5]
 
 def inference(observation): # 'Inference' in the sense of 'prediction'.
 
@@ -15,7 +15,7 @@ def inference(observation): # 'Inference' in the sense of 'prediction'.
 	for iLayer in range(1, len(H)):
 		W.append(tf.get_variable("W"+str(iLayer), shape=[H[iLayer-1], H[iLayer]],
 					 initializer=tf.contrib.layers.xavier_initializer()))
-		layers.append(tf.nn.relu(tf.matmul(layers[-1],W[-1])))
+		layers.append(tf.matmul(layers[-1],W[-1]))
 	# From last hidden layer to output.
 	# Length of action options is same as length of observation.
 	W.append(tf.get_variable("W"+str(len(H)), shape=[H[-1], observation.get_shape()[1]],
