@@ -62,7 +62,8 @@ def main(argv):
 	#Running the Agent and Environment
 	#Here we run the neural network agent, and have it act in the CartPole environment.
 
-	xs,hs,dlogps,drs,ys = [],[],[],[],[]
+	xs,rewards,ys = [],[],[]
+	all_discounted_rewards = np.array([])
 	episode_number = 0
 	init = tf.global_variables_initializer()
 
@@ -88,33 +89,29 @@ def main(argv):
 			ys.append(y)
 
 			# step the environment and get new measurements
-			observation, reward, done, info = env.step(action)
-
-			drs.append(reward) # record reward (has to be done after we call step() to get reward for previous action)
+			observation, thisReward, done, info = env.step(action)
+			rewards.append(thisReward) # record reward (has to be done after we call step() to get reward for previous action)
 
 			if done:
-				# stack together all inputs, hidden states, action gradients, and rewards for this episode
-				epx = np.vstack(xs)
-				epy = np.vstack(ys)
-				epr = np.vstack(drs)
-				xs,hs,dlogps,drs,ys = [],[],[],[],[] # reset array memory
-
+				# Have to handle rewards differently from x, y, because they need to be
+				# discounted and normalised on a per-episode basis.
 				# compute the discounted reward backwards through time
-				discounted_epr = discount_rewards(epr, gamma=gamma)
-				# size the rewards to be unit normal (helps control the gradient estimator variance)
-				# Seems to be vital for cartpole, and fatal for epidemic.
-
-				# TODO Append the epx, epy or something.
-				# TODO Adjust discount_epr in some way.
+				discounted_ep_rewards = discount_rewards(rewards, gamma=gamma)
+				# discounted_ep_rewards is numpy array.
+				# TODO Adjust discount_rewards in some way.
+				all_discounted_rewards = np.concatenate([all_discounted_rewards, discounted_ep_rewards])
+				rewards = []
 
 				# If we have completed enough episodes, then update the policy network with our gradients.
 				if episode_number % batch_size == 0:
 					# Was: sess.run(updateGrads,feed_dict={W1Grad: gradBuffer[0],W2Grad:gradBuffer[1]})
 					sess.run([train_op, loss],
-						feed_dict={observations_placeholder: epx,
-								input_y_placeholder: epy,
-								advantages_placeholder: discounted_epr})
-
+						feed_dict={observations_placeholder: np.vstack(xs),
+								input_y_placeholder: np.vstack(ys),
+								advantages_placeholder: np.vstack(all_discounted_rewards)})
+					# Reset the arrays.
+					xs,rewards,ys = [],[],[] # reset array memory
+					all_discounted_rewards = []
 					# Give a summary of how well our network is doing for each batch of episodes.
 					print('Ep %i/%i' % (episode_number, total_episodes))
 					if (batch_size == 1) and (episode_number == 1):
@@ -128,7 +125,7 @@ def main(argv):
 						else:
 							print(action)
 						print("Reward (advantage) was: ")
-						print(discounted_epr)
+						print(discounted_ep_rewards)
 						print("After update, probabilities would be: ")
 						probabilitiesWouldBe = sess.run(probability,feed_dict={observations: np.reshape(observation,[1,D])})
 						print(probabilitiesWouldBe)
