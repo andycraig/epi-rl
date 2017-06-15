@@ -6,7 +6,7 @@ import math
 import sys
 import getopt
 from utils import getAction, discount_rewards, output
-import policyNetwork
+import policyNetwork, valueNetwork
 
 
 def main(argv):
@@ -51,19 +51,25 @@ def main(argv):
 	nActions = env.nHosts + 1 # +1 for 'do nothing'.
 
 	tf.reset_default_graph()
-	# Define placeholders.
+	# Define policy network placeholders.
 	observations_placeholder = tf.placeholder(tf.float32, [None,D], name="input_x")
 	input_y_placeholder = tf.placeholder(tf.float32,[None,D], name="input_y")
 	advantages_placeholder = tf.placeholder(tf.float32,name="reward_signal")
-	# Set up network.
+	# Set up policy network.
 	probability = policyNetwork.inference(observations_placeholder)
 	loss =        policyNetwork.loss(probability, input_y_placeholder, advantages_placeholder) # Both?
 	train_op =    policyNetwork.training(loss, learning_rate)
-	#Running the Agent and Environment
-	#Here we run the neural network agent, and have it act in the CartPole environment.
+	# Set up value network placeholders.
+	new_value_placeholder = tf.placeholder(tf.float32, [None,D], name="new_value_placeholder")
+	# Set up value network.
+	estimated_value = valueNetwork.inference(observations_placeholder)
+	value_loss =      valueNetwork.loss(estimated_value, advantages_placeholder)
+	value_train_op =  valueNetwork.training(value_loss, learning_rate)
 
-	xs,rewards,ys = [],[],[]
+	xs, ys = [],[]
+	rewards, vals_from_network = [], []
 	all_discounted_rewards = np.array([])
+	all_discounted_vals_from_network = np.array([])
 	episode_number = 0
 	init = tf.global_variables_initializer()
 
@@ -83,6 +89,8 @@ def main(argv):
 			# Purpose of action is soley to go into env.step().
 			tfprob = sess.run(probability,
 							feed_dict={observations_placeholder: x})
+			this_val_from_network = sess.run(estimated_value,
+							feed_dict={observations_placeholder: x})
 			action, y = getAction(tfprob)
 
 			xs.append(x) # observation
@@ -91,16 +99,21 @@ def main(argv):
 			# step the environment and get new measurements
 			observation, thisReward, done, info = env.step(action)
 			rewards.append(thisReward) # record reward (has to be done after we call step() to get reward for previous action)
+			# this_val_from_network is like [[something]].
+			vals_from_network.append(this_val_from_network[0][0])
 
 			if done:
 				# Have to handle rewards differently from x, y, because they need to be
 				# discounted and normalised on a per-episode basis.
 				# compute the discounted reward backwards through time
 				discounted_ep_rewards = discount_rewards(rewards, gamma=gamma)
+				# TODO Should predicted vals be discounted?
+				discounted_vals_from_network = discount_rewards(vals_from_network, gamma=gamma)
 				# discounted_ep_rewards is numpy array.
-				# TODO Adjust discount_rewards in some way.
 				all_discounted_rewards = np.concatenate([all_discounted_rewards, discounted_ep_rewards])
-				rewards = []
+				all_discounted_vals_from_network = np.concatenate([all_discounted_vals_from_network, discounted_vals_from_network])
+				all_advantages = all_discounted_rewards - all_discounted_vals_from_network
+				rewards, vals_from_network = [], []
 
 				# If we have completed enough episodes, then update the policy network with our gradients.
 				if episode_number % batch_size == 0:
@@ -108,10 +121,17 @@ def main(argv):
 					sess.run([train_op, loss],
 						feed_dict={observations_placeholder: np.vstack(xs),
 								input_y_placeholder: np.vstack(ys),
-								advantages_placeholder: np.vstack(all_discounted_rewards)})
+								advantages_placeholder: np.vstack(all_advantages)})
+					sess.run([value_train_op, value_loss],
+						feed_dict={observations_placeholder: np.vstack(xs),
+								advantages_placeholder: np.vstack(all_discounted_vals_from_network)})
+
 					# Reset the arrays.
-					xs,rewards,ys = [],[],[] # reset array memory
+					xs, ys = [],[] # reset array memory
+					rewards, vals_from_network = [], []
 					all_discounted_rewards = []
+					all_advantages = []
+					all_discounted_vals_from_network = []
 					# Give a summary of how well our network is doing for each batch of episodes.
 					print('Ep %i/%i' % (episode_number, total_episodes))
 					if (batch_size == 1) and (episode_number == 1):

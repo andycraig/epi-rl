@@ -7,37 +7,26 @@ def inference(observation): # 'Inference' in the sense of 'prediction'.
 
 	W = []
 	layers = []
-	# From observations to hidden layer 0.
-	W.append(tf.get_variable("W"+str(0), shape=[observation.get_shape()[1], H[0]],
-				 initializer=tf.contrib.layers.xavier_initializer()))
-	layers.append(tf.nn.relu(tf.matmul(observation,W[0])))
-	# Intermediate layers.
-	for iLayer in range(1, len(H)):
-		W.append(tf.get_variable("W"+str(iLayer), shape=[H[iLayer-1], H[iLayer]],
+	with tf.variable_scope("valueNetwork"):
+		# From observations to hidden layer 0.
+		W.append(tf.get_variable("W"+str(0), shape=[observation.get_shape()[1], H[0]],
 					 initializer=tf.contrib.layers.xavier_initializer()))
-		layers.append(tf.matmul(layers[-1],W[-1]))
-	# From last hidden layer to output.
-	# Length of action options is same as length of observation.
-	W.append(tf.get_variable("W"+str(len(H)), shape=[H[-1], observation.get_shape()[1]],
-				 initializer=tf.contrib.layers.xavier_initializer()))
-	score = tf.matmul(layers[-1],W[-1])
-	probability = tf.nn.softmax(score)
-	return probability
+		layers.append(tf.nn.relu(tf.matmul(observation,W[0])))
+		# Intermediate layers.
+		for iLayer in range(1, len(H)):
+			W.append(tf.get_variable("W"+str(iLayer), shape=[H[iLayer-1], H[iLayer]],
+						 initializer=tf.contrib.layers.xavier_initializer()))
+			layers.append(tf.matmul(layers[-1],W[-1]))
+		# From last hidden layer to output.
+		# Length of action options is same as length of observation.
+		W.append(tf.get_variable("W"+str(len(H)), shape=[H[-1], 1],
+					 initializer=tf.contrib.layers.xavier_initializer()))
+		estimated_value = tf.matmul(layers[-1],W[-1])
+	return estimated_value
 
-def loss(probability, input_y, advantages):
-	#From here we define the parts of the network needed for learning a good policy.
-
-	# The loss function. This sends the weights in the direction of making actions
-	# that gave good advantage (reward over time) more likely, and actions that didn't less likely.
-	# Modified version of original; this one has high likelihood when input_y and probability match up.
-	# For example, if input_y is [0, 1] and probability is [.2, .8], we should get
-	# tf.log()
-	# For example, if input_y is [0, 1, 0] and probability is [.1, .8, .1], we should get
-	# tf.log()
-	loglik = tf.log(tf.reduce_sum(tf.mul(input_y, probability)))
-	loss = -tf.reduce_mean(loglik * advantages)
+def loss(estimated_value, new_value):
+	loss = tf.nn.l2_loss(estimated_value - new_value)
 	return loss
-	#newGrads = tf.gradients(loss,tvars)
 
 def training(loss, learning_rate):
 	# Once we have collected a series of gradients from multiple episodes, we apply them.
