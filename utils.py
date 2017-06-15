@@ -1,3 +1,4 @@
+import tensorflow as tf
 import numpy as np
 
 def discount_rewards(r, gamma):
@@ -38,3 +39,27 @@ def getAction(tfprob, env):
 		except ValueError:
 			print("ValueError! y was ", y)
 	return action, y
+
+def output(env, scopeName, fileName, timeRemaining, sess):
+	with tf.name_scope(scopeName):
+		observation = env.reset()
+		done = False
+		with open(fileName, "w") as f:
+			for iOutput in range(1):
+				for iTime in range(timeRemaining):
+					f.write(str(env))
+					print(str(env))
+					x = np.reshape(observation,[1,len(observation)])
+					print(probability.name)
+					tfprob = sess.run(probability,feed_dict={observations: x})
+					f.write(str(np.reshape(tfprob[0][0:env.nHosts], [env.gridLength, env.gridLength])))
+					print(str(np.reshape(tfprob[0][0:env.nHosts], [env.gridLength, env.gridLength])))
+					f.write("Prob. of no action: " + str(tfprob[0][-1]))
+					print("Prob. of no action: " + str(tfprob[0][-1]))
+					action, y = getAction(tfprob, environment)
+					f.write("Took action: " + str(action))
+					print("Took action: " + str(action))
+					observation, reward, done, info = env.step(action)
+					f.write("Got reward: " + str(reward))
+					print("Got reward: " + str(reward))
+				observation = env.reset()
