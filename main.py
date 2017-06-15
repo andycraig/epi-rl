@@ -122,9 +122,9 @@ def main(argv):
 						feed_dict={observations_placeholder: np.vstack(xs),
 								input_y_placeholder: np.vstack(ys),
 								advantages_placeholder: np.vstack(all_advantages)})
-					sess.run([value_train_op, value_loss],
+					_, thisValueLoss = sess.run([value_train_op, value_loss],
 						feed_dict={observations_placeholder: np.vstack(xs),
-								advantages_placeholder: np.vstack(all_discounted_vals_from_network)})
+								advantages_placeholder: np.vstack(all_discounted_rewards)})
 
 					# Reset the arrays.
 					xs, ys = [],[] # reset array memory
@@ -134,7 +134,7 @@ def main(argv):
 					all_discounted_vals_from_network = []
 					# Give a summary of how well our network is doing for each batch of episodes.
 					print('Ep %i/%i' % (episode_number, total_episodes))
-					if (batch_size == 1) and (episode_number == 1):
+					if (batch_size == 1) and ((episode_number == 1) or (episode_number == total_episodes)):
 						print("Observation was: ")
 						print(x)
 						print("Probabilities were: ")
@@ -144,11 +144,12 @@ def main(argv):
 							print(action, " (no action)")
 						else:
 							print(action)
-						print("Reward (advantage) was: ")
-						print(discounted_ep_rewards)
-						print("After update, probabilities would be: ")
-						probabilitiesWouldBe = sess.run(probability,feed_dict={observations: np.reshape(observation,[1,D])})
-						print(probabilitiesWouldBe)
+						print("Reward was: ")
+						print(thisReward)
+						print("Value network thought value was: ")
+						print(this_val_from_network[0][0])
+						print("Value network loss was: ")
+						print(thisValueLoss)
 
 				observation = env.reset()
 
