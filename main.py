@@ -22,8 +22,8 @@ def main(argv):
 	beta = 0
 	initiallyCryptic = False
 	verbose = False
-	layersPolicy = [1] # An element for each layer, with each element the number of nodes in the layer.
-	layersValue = [1]
+	layersPolicy = [5] # An element for each layer, with each element the number of nodes in the layer.
+	layersValue = [5]
 	opts, args = getopt.getopt(argv,"h:n:t:b:g",
 									["hostlength=","nepisodes=",
 									"timeremaining=","batchsize=",
@@ -142,9 +142,10 @@ def main(argv):
 						print("\n============= END OF BATCH ============")
 						print("Last observation: ", x)
 						print("probabilities for this were: ", tfprob)
-						#tfprobWouldBe = sess.run(probability,
-						#	feed_dict={observations_placeholder: x})
-						#print("Now probabilities would be: ", tfprobWouldBe)
+						# If next couple of lines are run, learning doesn't happen.
+						tfprobWouldBe = sess.run(probability,
+							feed_dict={observations_placeholder: x})
+						print("Now probabilities would be: ", tfprobWouldBe)
 					# Reset the arrays.
 					xs, ys = [],[] # reset array memory
 					rewards, vals_from_network = [], []
@@ -154,28 +155,6 @@ def main(argv):
 					# Give a summary of how well our network is doing for each batch of episodes.
 					if not verbose:
 						print('Ep %i/%i' % (episode_number, total_episodes))
-					else:
-						print("Observation was: ")
-						print(x)
-						print("Probabilities were: ")
-						print(tfprob)
-						print("Action chosen was: ")
-						if action == nActions:
-							print(action, " (no action)")
-						else:
-							print(action)
-						print("Reward was: ")
-						print(thisReward)
-						print("Value network thought value was: ")
-						print(this_val_from_network[0][0])
-						print("Value network loss was: ")
-						print(thisValueLoss)
-						print("Policy network loss was: ")
-						print(thisPolicyLoss)
-						print("Value network train was: ")
-						print(thisValueTrain)
-						print("Policy network train was: ")
-						print(thisValueTrain)
 
 				observation = env.reset()
 

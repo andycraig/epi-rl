@@ -24,14 +24,6 @@ def inference(observation, nActions, H): # 'Inference' in the sense of 'predicti
 
 def loss(probability, input_y, advantages):
 	#From here we define the parts of the network needed for learning a good policy.
-
-	# The loss function. This sends the weights in the direction of making actions
-	# that gave good advantage (reward over time) more likely, and actions that didn't less likely.
-	# Modified version of original; this one has high likelihood when input_y and probability match up.
-	# For example, if input_y is [0, 1] and probability is [.2, .8], we should get
-	# tf.log()
-	# For example, if input_y is [0, 1, 0] and probability is [.1, .8, .1], we should get
-	# tf.log()
 	loglik = tf.log(tf.reduce_sum(tf.mul(input_y, probability)))
 	loss = -tf.reduce_mean(loglik * advantages)
 	return loss
