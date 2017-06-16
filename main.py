@@ -142,9 +142,9 @@ def main(argv):
 						print("\n============= END OF BATCH ============")
 						print("Last observation: ", x)
 						print("probabilities for this were: ", tfprob)
-						tfprobWouldBe = sess.run(probability,
-							feed_dict={observations_placeholder: x})
-						print("Now probabilities would be: ", tfprobWouldBe)
+						#tfprobWouldBe = sess.run(probability,
+						#	feed_dict={observations_placeholder: x})
+						#print("Now probabilities would be: ", tfprobWouldBe)
 					# Reset the arrays.
 					xs, ys = [],[] # reset array memory
 					rewards, vals_from_network = [], []
