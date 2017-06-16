@@ -5,7 +5,7 @@ import tensorflow as tf
 import math
 import sys
 import getopt
-from utils import getAction, discount_rewards, output
+from utils import getAction, discount_rewards, output, softmax
 import policyNetwork, valueNetwork
 
 
@@ -59,11 +59,11 @@ def main(argv):
 	tf.reset_default_graph()
 	# Define policy network placeholders.
 	observations_placeholder = tf.placeholder(tf.float32, [None,D], name="input_x")
-	input_y_placeholder = tf.placeholder(tf.float32,[None,nActions], name="input_y")
+	input_y_placeholder = tf.placeholder(tf.int32, [None], name="input_y")
 	advantages_placeholder = tf.placeholder(tf.float32,name="reward_signal")
 	# Set up policy network.
-	probability = policyNetwork.inference(observations_placeholder, nActions, layersPolicy)
-	loss =        policyNetwork.loss(probability, input_y_placeholder, advantages_placeholder) # Both?
+	probsBeforeSoftmax = policyNetwork.inference(observations_placeholder, nActions, layersPolicy)
+	loss =        policyNetwork.loss(probsBeforeSoftmax, input_y_placeholder, advantages_placeholder) # Both?
 	train_op =    policyNetwork.training(loss, learning_rate)
 	# Set up value network placeholders.
 	new_value_placeholder = tf.placeholder(tf.float32, [None,D], name="new_value_placeholder")
@@ -93,14 +93,14 @@ def main(argv):
 
 			# Run the policy network and get an action to take.
 			# Purpose of action is soley to go into env.step().
-			tfprob = sess.run(probability,
+			tfprobsBeforeSoftmax = sess.run(probsBeforeSoftmax,
 							feed_dict={observations_placeholder: x})
 			this_val_from_network = sess.run(estimated_value,
 							feed_dict={observations_placeholder: x})
-			action, y = getAction(tfprob)
+			action, y = getAction(tfprobsBeforeSoftmax)
 
 			xs.append(x) # observation
-			ys.append(y)
+			ys.append(action)
 
 			# step the environment and get new measurements
 			observation, thisReward, done, info = env.step(action)
@@ -133,7 +133,7 @@ def main(argv):
 					# Was: sess.run(updateGrads,feed_dict={W1Grad: gradBuffer[0],W2Grad:gradBuffer[1]})
 					thisPolicyTrain, thisPolicyLoss = sess.run([train_op, loss],
 						feed_dict={observations_placeholder: np.vstack(xs),
-								input_y_placeholder: np.vstack(ys),
+								input_y_placeholder: ys,
 								advantages_placeholder: np.vstack(all_advantages)})
 					thisValueTrain, thisValueLoss = sess.run([value_train_op, value_loss],
 						feed_dict={observations_placeholder: np.vstack(xs),
@@ -141,11 +141,12 @@ def main(argv):
 					if verbose:
 						print("\n============= END OF BATCH ============")
 						print("Last observation: ", x)
-						print("probabilities for this were: ", tfprob)
+						print("Probabilities for this were: ", softmax(tfprobsBeforeSoftmax))
+						print("Estimated value was: ", this_val_from_network[0][0])
 						# If next couple of lines are run, learning doesn't happen.
-						tfprobWouldBe = sess.run(probability,
+						tfprobBeforeSoftmaxWouldBe = sess.run(probsBeforeSoftmax,
 							feed_dict={observations_placeholder: x})
-						print("Now probabilities would be: ", tfprobWouldBe)
+						print("Now probabilities would be: ", softmax(tfprobBeforeSoftmaxWouldBe))
 					# Reset the arrays.
 					xs, ys = [],[] # reset array memory
 					rewards, vals_from_network = [], []
@@ -161,8 +162,6 @@ def main(argv):
 		print(episode_number,'Episodes completed.')
 		# Run the trained model on a sample and save to a file.
 		observation = env.reset()
-
-		output(env, probability, observations_placeholder, "outputFile.txt", sess)
 
 if __name__ == "__main__":
 	  main(sys.argv[1:])

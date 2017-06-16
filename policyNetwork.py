@@ -18,16 +18,15 @@ def inference(observation, nActions, H): # 'Inference' in the sense of 'predicti
 		# Length of action options is same as length of observation, plus 1 for no action..
 		W.append(tf.get_variable("W"+str(len(H)), shape=[H[-1], nActions],
 					 initializer=tf.contrib.layers.xavier_initializer()))
-		score = tf.matmul(layers[-1],W[-1])
-		probability = tf.nn.softmax(score)
-	return probability
+		probsBeforeSoftmax = tf.matmul(layers[-1],W[-1])
+	return probsBeforeSoftmax
 
-def loss(probability, input_y, advantages):
+def loss(probsBeforeSoftmax, input_y, advantages):
 	#From here we define the parts of the network needed for learning a good policy.
-	loglik = tf.log(tf.reduce_sum(tf.mul(input_y, probability)))
+	cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=input_y, logits=probsBeforeSoftmax)
+	loglik = tf.log(tf.reduce_sum(cross_entropy))
 	loss = -tf.reduce_mean(loglik * advantages)
 	return loss
-	#newGrads = tf.gradients(loss,tvars)
 
 def training(loss, learning_rate):
 	# Once we have collected a series of gradients from multiple episodes, we apply them.

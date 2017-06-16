@@ -10,13 +10,17 @@ def discount_rewards(r, gamma):
 		discounted_r[t] = running_add
 	return discounted_r
 
-def getAction(tfprob):
+def softmax(x):
+	exps = np.exp(x - np.max(x))
+	return exps / exps.sum(axis=0)
+
+def getAction(tfprobsBeforeSoftmax):
 	# y is
 	# tfprob and y should match up.
 	# tfprob [1.] should give action = 0, y = [1]
 	# tfprob [0.] should give action = 1, y = [0]
 	# TODO Change from np.random.multinomial, which is very slow.
-	pvals = tfprob[0]
+	pvals = softmax(tfprobsBeforeSoftmax[0])
 	try:
 		y = np.random.multinomial(n=1, pvals=pvals)
 	except ValueError as e:
