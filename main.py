@@ -22,6 +22,8 @@ def main(argv):
 	beta = 0
 	initiallyCryptic = False
 	verbose = False
+	layersPolicy = [1] # An element for each layer, with each element the number of nodes in the layer.
+	layersValue = [1]
 	opts, args = getopt.getopt(argv,"h:n:t:b:g",
 									["hostlength=","nepisodes=",
 									"timeremaining=","batchsize=",
@@ -60,13 +62,13 @@ def main(argv):
 	input_y_placeholder = tf.placeholder(tf.float32,[None,nActions], name="input_y")
 	advantages_placeholder = tf.placeholder(tf.float32,name="reward_signal")
 	# Set up policy network.
-	probability = policyNetwork.inference(observations_placeholder, nActions)
+	probability = policyNetwork.inference(observations_placeholder, nActions, layersPolicy)
 	loss =        policyNetwork.loss(probability, input_y_placeholder, advantages_placeholder) # Both?
 	train_op =    policyNetwork.training(loss, learning_rate)
 	# Set up value network placeholders.
 	new_value_placeholder = tf.placeholder(tf.float32, [None,D], name="new_value_placeholder")
 	# Set up value network.
-	estimated_value = valueNetwork.inference(observations_placeholder)
+	estimated_value = valueNetwork.inference(observations_placeholder, layersValue)
 	value_loss =      valueNetwork.loss(estimated_value, advantages_placeholder)
 	value_train_op =  valueNetwork.training(value_loss, learning_rate)
 
@@ -129,11 +131,11 @@ def main(argv):
 				if episode_number % batch_size == 0:
 
 					# Was: sess.run(updateGrads,feed_dict={W1Grad: gradBuffer[0],W2Grad:gradBuffer[1]})
-					sess.run([train_op, loss],
+					thisPolicyTrain, thisPolicyLoss = sess.run([train_op, loss],
 						feed_dict={observations_placeholder: np.vstack(xs),
 								input_y_placeholder: np.vstack(ys),
 								advantages_placeholder: np.vstack(all_advantages)})
-					_, thisValueLoss = sess.run([value_train_op, value_loss],
+					thisValueTrain, thisValueLoss = sess.run([value_train_op, value_loss],
 						feed_dict={observations_placeholder: np.vstack(xs),
 								advantages_placeholder: np.vstack(all_discounted_rewards)})
 					if verbose:
@@ -150,8 +152,9 @@ def main(argv):
 					all_advantages = []
 					all_discounted_vals_from_network = []
 					# Give a summary of how well our network is doing for each batch of episodes.
-					print('Ep %i/%i' % (episode_number, total_episodes))
-					if (batch_size == 1) and ((episode_number == 1) or (episode_number == total_episodes)):
+					if not verbose:
+						print('Ep %i/%i' % (episode_number, total_episodes))
+					else:
 						print("Observation was: ")
 						print(x)
 						print("Probabilities were: ")
@@ -167,6 +170,12 @@ def main(argv):
 						print(this_val_from_network[0][0])
 						print("Value network loss was: ")
 						print(thisValueLoss)
+						print("Policy network loss was: ")
+						print(thisPolicyLoss)
+						print("Value network train was: ")
+						print(thisValueTrain)
+						print("Policy network train was: ")
+						print(thisValueTrain)
 
 				observation = env.reset()
 

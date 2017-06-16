@@ -1,9 +1,7 @@
 import tensorflow as tf
 import numpy as np
 
-H = [5]
-
-def inference(observation): # 'Inference' in the sense of 'prediction'.
+def inference(observation, H): # 'Inference' in the sense of 'prediction'.
 
 	W = []
 	layers = []
