@@ -21,10 +21,11 @@ def main(argv):
 	batch_size = 5 # every how many episodes to do a param update?
 	beta = 0
 	initiallyCryptic = False
+	verbose = False
 	opts, args = getopt.getopt(argv,"h:n:t:b:g",
 									["hostlength=","nepisodes=",
 									"timeremaining=","batchsize=",
-									"beta=","initiallyc"])
+									"beta=","initiallyc","verbose"])
 	for opt, arg in opts:
 		if opt in ("-h", "--hostlength"):
 			gridLength = int(arg)
@@ -38,14 +39,17 @@ def main(argv):
 			beta = float(arg)
 		elif opt in ("--initiallyc"):
 			initiallyCryptic = True
+		elif opt in ("--verbose"):
+			verbose = True
 	# Epidemic version.
 	from epidemic import Epidemic
 	env = Epidemic(gridLength=gridLength,
 					epsilon=0,
 					beta=beta,
-					CToI=1,
+					CToI=0,
 					timeRemaining=timeRemaining,
-					rewardForAnyNonI=False,
+					rewardForC=True,
+					rewardForR=False,
 					initiallyCryptic=initiallyCryptic)
 	D = env.nHosts
 	nActions = env.nHosts + 1 # +1 for 'do nothing'.
@@ -113,10 +117,17 @@ def main(argv):
 				all_discounted_rewards = np.concatenate([all_discounted_rewards, discounted_ep_rewards])
 				all_discounted_vals_from_network = np.concatenate([all_discounted_vals_from_network, discounted_vals_from_network])
 				all_advantages = all_discounted_rewards - all_discounted_vals_from_network
+				if verbose:
+					print("\n=== END OF EPISODE ", episode_number, "/", total_episodes, " ===")
+					print("ys: ", ys)
+					print("all_discounted_rewards: ", all_discounted_rewards)
+					print("all_discounted_vals_from_network: ", all_discounted_vals_from_network)
+					print("all_advantages: ", all_advantages)
 				rewards, vals_from_network = [], []
 
 				# If we have completed enough episodes, then update the policy network with our gradients.
 				if episode_number % batch_size == 0:
+
 					# Was: sess.run(updateGrads,feed_dict={W1Grad: gradBuffer[0],W2Grad:gradBuffer[1]})
 					sess.run([train_op, loss],
 						feed_dict={observations_placeholder: np.vstack(xs),
@@ -125,7 +136,13 @@ def main(argv):
 					_, thisValueLoss = sess.run([value_train_op, value_loss],
 						feed_dict={observations_placeholder: np.vstack(xs),
 								advantages_placeholder: np.vstack(all_discounted_rewards)})
-
+					if verbose:
+						print("\n============= END OF BATCH ============")
+						print("Last observation: ", x)
+						print("probabilities for this were: ", tfprob)
+						tfprobWouldBe = sess.run(probability,
+							feed_dict={observations_placeholder: x})
+						print("Now probabilities would be: ", tfprobWouldBe)
 					# Reset the arrays.
 					xs, ys = [],[] # reset array memory
 					rewards, vals_from_network = [], []

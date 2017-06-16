@@ -8,7 +8,8 @@ SIR_R = -1
 
 class Epidemic():
 	def __init__(self, gridLength=2, epsilon=0, beta=1, CToI=1,
-				timeRemaining=10, rewardForAnyNonI=False, initialInfectedAnywhere=True,
+				timeRemaining=10, rewardForC=False, rewardForR=False,
+				initialInfectedAnywhere=True,
 				initiallyCryptic=False):
 		# Epidemic parameters.
 		self.epsilon = epsilon
@@ -16,7 +17,8 @@ class Epidemic():
 		self.CToI = CToI
 		self.initialTimeRemaining = timeRemaining
 		self.initialInfectedAnywhere = initialInfectedAnywhere
-		self.rewardForAnyNonI = rewardForAnyNonI # For testing purposes.
+		self.rewardForC = rewardForC # For testing purposes.
+		self.rewardForR = rewardForR
 		if gridLength < 0:
 			raise ValueError("gridLength must be positive integer.")
 		self.gridLength = gridLength # Number of hosts is gridLength squared.
@@ -83,11 +85,13 @@ class Epidemic():
 		return self.timeRemaining <= 0
 	def getReward(self):
 		if self.isDone():
+			unnormalisedReward = sum(np.array(self.hostGrid) == SIR_S)
 			# Reward based on number of S hosts.
-			if self.rewardForAnyNonI:
-				reward = sum(np.array(self.hostGrid) != SIR_I)/self.nHosts # Higher reward for more S hosts
-			else:
-				reward = sum(np.array(self.hostGrid) == SIR_S)/self.nHosts # Higher reward for more S hosts
+			if self.rewardForC:
+				unnormalisedReward += sum(np.array(self.hostGrid) == SIR_C) # Higher reward for more S hosts
+			if self.rewardForR:
+				unnormalisedReward += sum(np.array(self.hostGrid) == SIR_R) # Higher reward for more S hosts
+			reward = 1.0 * unnormalisedReward / self.nHosts
 		else:
 			reward = 0
 		return reward
