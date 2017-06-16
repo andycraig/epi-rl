@@ -53,10 +53,10 @@ def main(argv):
 	tf.reset_default_graph()
 	# Define policy network placeholders.
 	observations_placeholder = tf.placeholder(tf.float32, [None,D], name="input_x")
-	input_y_placeholder = tf.placeholder(tf.float32,[None,D], name="input_y")
+	input_y_placeholder = tf.placeholder(tf.float32,[None,nActions], name="input_y")
 	advantages_placeholder = tf.placeholder(tf.float32,name="reward_signal")
 	# Set up policy network.
-	probability = policyNetwork.inference(observations_placeholder)
+	probability = policyNetwork.inference(observations_placeholder, nActions)
 	loss =        policyNetwork.loss(probability, input_y_placeholder, advantages_placeholder) # Both?
 	train_op =    policyNetwork.training(loss, learning_rate)
 	# Set up value network placeholders.

@@ -3,7 +3,7 @@ import numpy as np
 
 H = [7]
 
-def inference(observation): # 'Inference' in the sense of 'prediction'.
+def inference(observation, nActions): # 'Inference' in the sense of 'prediction'.
 	W = []
 	layers = []
 	# From observations to hidden layer 0.
@@ -17,8 +17,8 @@ def inference(observation): # 'Inference' in the sense of 'prediction'.
 						 initializer=tf.contrib.layers.xavier_initializer()))
 			layers.append(tf.nn.relu(tf.matmul(layers[-1],W[-1])))
 		# From last hidden layer to output.
-		# Length of action options is same as length of observation.
-		W.append(tf.get_variable("W"+str(len(H)), shape=[H[-1], observation.get_shape()[1]],
+		# Length of action options is same as length of observation, plus 1 for no action..
+		W.append(tf.get_variable("W"+str(len(H)), shape=[H[-1], nActions],
 					 initializer=tf.contrib.layers.xavier_initializer()))
 		score = tf.matmul(layers[-1],W[-1])
 		probability = tf.nn.softmax(score)
