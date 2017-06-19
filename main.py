@@ -84,6 +84,15 @@ def main(argv):
 		sess.run(init)
 
 		observation = env.reset() # Obtain an initial observation of the environment
+		x = np.reshape(observation,[1,D])
+
+		if verbose:
+			logits = sess.run(probsBeforeSoftmax,
+							feed_dict={observations_placeholder: x})
+			print("\n============= |BEFORE TRAINING ============")
+			print("Example observation: ", x)
+			print("Logits before softmax were: ", logits)
+			print("Probabilities for this were: ", softmax(logits[0]))
 
 		while episode_number < total_episodes:
 			episode_number += 1
@@ -93,11 +102,11 @@ def main(argv):
 
 			# Run the policy network and get an action to take.
 			# Purpose of action is soley to go into env.step().
-			tfprobsBeforeSoftmax = sess.run(probsBeforeSoftmax,
+			logits = sess.run(probsBeforeSoftmax,
 							feed_dict={observations_placeholder: x})
 			this_val_from_network = sess.run(estimated_value,
 							feed_dict={observations_placeholder: x})
-			action, y = getAction(tfprobsBeforeSoftmax)
+			action, y = getAction(logits)
 
 			xs.append(x) # observation
 			ys.append(action)
@@ -141,12 +150,13 @@ def main(argv):
 					if verbose:
 						print("\n============= END OF BATCH ============")
 						print("Last observation: ", x)
-						print("Probabilities for this were: ", softmax(tfprobsBeforeSoftmax))
+						print("Logits before softmax were: ", logits)
+						print("Probabilities for this were: ", softmax(logits[0]))
 						print("Estimated value was: ", this_val_from_network[0][0])
 						# If next couple of lines are run, learning doesn't happen.
-						tfprobBeforeSoftmaxWouldBe = sess.run(probsBeforeSoftmax,
+						logitsWouldBe = sess.run(probsBeforeSoftmax,
 							feed_dict={observations_placeholder: x})
-						print("Now probabilities would be: ", softmax(tfprobBeforeSoftmaxWouldBe))
+						print("Now probabilities would be: ", softmax(logitsWouldBe[0]))
 					# Reset the arrays.
 					xs, ys = [],[] # reset array memory
 					rewards, vals_from_network = [], []

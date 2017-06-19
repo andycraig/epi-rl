@@ -18,12 +18,12 @@ def inference(observation, nActions, H): # 'Inference' in the sense of 'predicti
 		# Length of action options is same as length of observation, plus 1 for no action..
 		W.append(tf.get_variable("W"+str(len(H)), shape=[H[-1], nActions],
 					 initializer=tf.contrib.layers.xavier_initializer()))
-		probsBeforeSoftmax = tf.matmul(layers[-1],W[-1])
-	return probsBeforeSoftmax
+		logits = tf.matmul(layers[-1],W[-1])
+	return logits
 
-def loss(probsBeforeSoftmax, input_y, advantages):
+def loss(logits, input_y, advantages):
 	#From here we define the parts of the network needed for learning a good policy.
-	cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=input_y, logits=probsBeforeSoftmax)
+	cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=input_y, logits=logits)
 	loglik = tf.log(tf.reduce_sum(cross_entropy))
 	loss = -tf.reduce_mean(loglik * advantages)
 	return loss
