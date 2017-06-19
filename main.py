@@ -24,10 +24,11 @@ def main(argv):
 	verbose = False
 	layersPolicy = [5] # An element for each layer, with each element the number of nodes in the layer.
 	layersValue = [5]
+	useValueNetwork = False
 	opts, args = getopt.getopt(argv,"h:n:t:b:g",
 									["hostlength=","nepisodes=",
 									"timeremaining=","batchsize=",
-									"beta=","initiallyc","verbose"])
+									"beta=","initiallyc","verbose","valuenetwork"])
 	for opt, arg in opts:
 		if opt in ("-h", "--hostlength"):
 			gridLength = int(arg)
@@ -43,6 +44,8 @@ def main(argv):
 			initiallyCryptic = True
 		elif opt in ("--verbose"):
 			verbose = True
+		elif opt in ("--valuenetwork"):
+			useValueNetwork = True
 	# Epidemic version.
 	from epidemic import Epidemic
 	env = Epidemic(gridLength=gridLength,
@@ -62,20 +65,23 @@ def main(argv):
 	input_y_placeholder = tf.placeholder(tf.int32, [None], name="input_y")
 	advantages_placeholder = tf.placeholder(tf.float32,name="reward_signal")
 	# Set up policy network.
-	probsBeforeSoftmax = policyNetwork.inference(observations_placeholder, nActions, layersPolicy)
-	loss =        policyNetwork.loss(probsBeforeSoftmax, input_y_placeholder, advantages_placeholder) # Both?
-	train_op =    policyNetwork.training(loss, learning_rate)
-	# Set up value network placeholders.
-	new_value_placeholder = tf.placeholder(tf.float32, [None,D], name="new_value_placeholder")
-	# Set up value network.
-	estimated_value = valueNetwork.inference(observations_placeholder, layersValue)
-	value_loss =      valueNetwork.loss(estimated_value, advantages_placeholder)
-	value_train_op =  valueNetwork.training(value_loss, learning_rate)
+	logits = 	policyNetwork.inference(observations_placeholder, nActions, layersPolicy)
+	loss =      policyNetwork.loss(logits, input_y_placeholder, advantages_placeholder) # Both?
+	train_op =  policyNetwork.training(loss, learning_rate)
+	if useValueNetwork:
+		# Set up value network placeholders.
+		new_value_placeholder = tf.placeholder(tf.float32, [None,D], name="new_value_placeholder")
+		# Set up value network.
+		estimated_value = valueNetwork.inference(observations_placeholder, layersValue)
+		value_loss =      valueNetwork.loss(estimated_value, advantages_placeholder)
+		value_train_op =  valueNetwork.training(value_loss, learning_rate)
 
 	xs, ys = [],[]
-	rewards, vals_from_network = [], []
+	rewards = []
 	all_discounted_rewards = np.array([])
-	all_discounted_vals_from_network = np.array([])
+	if useValueNetwork:
+		vals_from_network = []
+		all_discounted_vals_from_network = np.array([])
 	episode_number = 0
 	init = tf.global_variables_initializer()
 
@@ -87,12 +93,12 @@ def main(argv):
 		x = np.reshape(observation,[1,D])
 
 		if verbose:
-			logits = sess.run(probsBeforeSoftmax,
+			tflogits = sess.run(logits,
 							feed_dict={observations_placeholder: x})
 			print("\n============= |BEFORE TRAINING ============")
 			print("Example observation: ", x)
-			print("Logits before softmax were: ", logits)
-			print("Probabilities for this were: ", softmax(logits[0]))
+			print("Logits before softmax were: ", tflogits)
+			print("Probabilities for this were: ", softmax(tflogits[0]))
 
 		while episode_number < total_episodes:
 			episode_number += 1
@@ -102,11 +108,11 @@ def main(argv):
 
 			# Run the policy network and get an action to take.
 			# Purpose of action is soley to go into env.step().
-			logits = sess.run(probsBeforeSoftmax,
+			tflogits = sess.run(logits, feed_dict={observations_placeholder: x})
+			if useValueNetwork:
+				this_val_from_network = sess.run(estimated_value,
 							feed_dict={observations_placeholder: x})
-			this_val_from_network = sess.run(estimated_value,
-							feed_dict={observations_placeholder: x})
-			action, y = getAction(logits)
+			action, y = getAction(tflogits)
 
 			xs.append(x) # observation
 			ys.append(action)
@@ -114,8 +120,9 @@ def main(argv):
 			# step the environment and get new measurements
 			observation, thisReward, done, info = env.step(action)
 			rewards.append(thisReward) # record reward (has to be done after we call step() to get reward for previous action)
-			# this_val_from_network is like [[something]].
-			vals_from_network.append(this_val_from_network[0][0])
+			if useValueNetwork:
+				# this_val_from_network is like [[something]].
+				vals_from_network.append(this_val_from_network[0][0])
 
 			if done:
 				# Have to handle rewards differently from x, y, because they need to be
@@ -123,46 +130,65 @@ def main(argv):
 				# compute the discounted reward backwards through time
 				discounted_ep_rewards = discount_rewards(rewards, gamma=gamma)
 				# TODO Should predicted vals be discounted?
-				discounted_vals_from_network = discount_rewards(vals_from_network, gamma=gamma)
+				if useValueNetwork:
+					discounted_vals_from_network = discount_rewards(vals_from_network, gamma=gamma)
 				# discounted_ep_rewards is numpy array.
 				all_discounted_rewards = np.concatenate([all_discounted_rewards, discounted_ep_rewards])
-				all_discounted_vals_from_network = np.concatenate([all_discounted_vals_from_network, discounted_vals_from_network])
-				all_advantages = all_discounted_rewards - all_discounted_vals_from_network
+				if useValueNetwork:
+					all_discounted_vals_from_network = np.concatenate([all_discounted_vals_from_network, discounted_vals_from_network])
+					all_advantages = all_discounted_rewards - all_discounted_vals_from_network
 				if verbose:
 					print("\n=== END OF EPISODE ", episode_number, "/", total_episodes, " ===")
 					print("ys: ", ys)
 					print("all_discounted_rewards: ", all_discounted_rewards)
-					print("all_discounted_vals_from_network: ", all_discounted_vals_from_network)
-					print("all_advantages: ", all_advantages)
-				rewards, vals_from_network = [], []
+					if useValueNetwork:
+						print("all_discounted_vals_from_network: ", all_discounted_vals_from_network)
+						print("all_advantages: ", all_advantages)
+				rewards = []
+				if useValueNetwork:
+					vals_from_network = []
 
 				# If we have completed enough episodes, then update the policy network with our gradients.
 				if episode_number % batch_size == 0:
 
+					canLearn = True
+					if not useValueNetwork:
+						discountedRewardMean = np.mean(all_discounted_rewards)
+						discountedRewardStdev = np.sqrt(np.var(all_discounted_rewards))
+						if discountedRewardStdev == 0:
+							Warning("Discounted rewards were all same for this batch - can't learn.")
+							canLearn = False
+						else:
+							all_advantages = (all_discounted_rewards - discountedRewardMean) / discountedRewardStdev
 					# Was: sess.run(updateGrads,feed_dict={W1Grad: gradBuffer[0],W2Grad:gradBuffer[1]})
-					thisPolicyTrain, thisPolicyLoss = sess.run([train_op, loss],
-						feed_dict={observations_placeholder: np.vstack(xs),
-								input_y_placeholder: ys,
-								advantages_placeholder: np.vstack(all_advantages)})
-					thisValueTrain, thisValueLoss = sess.run([value_train_op, value_loss],
-						feed_dict={observations_placeholder: np.vstack(xs),
-								advantages_placeholder: np.vstack(all_discounted_rewards)})
+					if canLearn:
+						thisPolicyTrain, thisPolicyLoss = sess.run([train_op, loss],
+							feed_dict={observations_placeholder: np.vstack(xs),
+									input_y_placeholder: ys,
+									advantages_placeholder: np.vstack(all_advantages)})
+						if useValueNetwork:
+							thisValueTrain, thisValueLoss = sess.run([value_train_op, value_loss],
+								feed_dict={observations_placeholder: np.vstack(xs),
+										advantages_placeholder: np.vstack(all_discounted_rewards)})
 					if verbose:
 						print("\n============= END OF BATCH ============")
+						print("Advantages: ", all_advantages)
 						print("Last observation: ", x)
-						print("Logits before softmax were: ", logits)
-						print("Probabilities for this were: ", softmax(logits[0]))
-						print("Estimated value was: ", this_val_from_network[0][0])
-						# If next couple of lines are run, learning doesn't happen.
-						logitsWouldBe = sess.run(probsBeforeSoftmax,
+						print("Logits before softmax were: ", tflogits)
+						print("Probabilities for this were: ", softmax(tflogits[0]))
+						if useValueNetwork:
+							print("Estimated value was: ", this_val_from_network[0][0])
+						tflogitsWouldBe = sess.run(logits,
 							feed_dict={observations_placeholder: x})
-						print("Now probabilities would be: ", softmax(logitsWouldBe[0]))
+						print("Now probabilities would be: ", softmax(tflogitsWouldBe[0]))
 					# Reset the arrays.
 					xs, ys = [],[] # reset array memory
-					rewards, vals_from_network = [], []
+					rewards = []
+					if useValueNetwork:
+						vals_from_network = []
+						all_discounted_vals_from_network = []
 					all_discounted_rewards = []
 					all_advantages = []
-					all_discounted_vals_from_network = []
 					# Give a summary of how well our network is doing for each batch of episodes.
 					if not verbose:
 						print('Ep %i/%i' % (episode_number, total_episodes))
