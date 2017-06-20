@@ -1,5 +1,6 @@
 # Heavily based on https://gist.github.com/awjuliani/86ae316a231bceb96a3e2ab3ac8e646a#file-rl-tutorial-2-ipynb
 
+import gym
 import numpy as np
 import tensorflow as tf
 import math
@@ -25,8 +26,9 @@ def main(argv):
 	layersPolicy = [5] # An element for each layer, with each element the number of nodes in the layer.
 	layersValue = [5]
 	useValueNetwork = False
-	opts, args = getopt.getopt(argv,"h:n:t:b:g",
-									["hostlength=","nepisodes=",
+	environment = "epidemic"
+	opts, args = getopt.getopt(argv,"e:h:n:t:b:g",
+									["environment=","hostlength=","nepisodes=",
 									"timeremaining=","batchsize=",
 									"beta=","initiallyc","verbose","valuenetwork"])
 	for opt, arg in opts:
@@ -40,6 +42,8 @@ def main(argv):
 			batch_size = int(arg)
 		elif opt in ("--beta"):
 			beta = float(arg)
+		elif opt in ("-e", "--environment"):
+			environment = arg
 		elif opt in ("--initiallyc"):
 			initiallyCryptic = True
 		elif opt in ("--verbose"):
@@ -47,17 +51,24 @@ def main(argv):
 		elif opt in ("--valuenetwork"):
 			useValueNetwork = True
 	# Epidemic version.
-	from epidemic import Epidemic
-	env = Epidemic(gridLength=gridLength,
-					epsilon=0,
-					beta=beta,
-					CToI=0,
-					timeRemaining=timeRemaining,
-					rewardForC=True,
-					rewardForR=False,
-					initiallyCryptic=initiallyCryptic)
-	D = env.nHosts
-	nActions = env.nHosts + 1 # +1 for 'do nothing'.
+	if environment == "cartpole":
+		env = gym.make("CartPole-v0")
+		D = 4
+		nActions = 2
+	elif environment == "epidemic":
+		from epidemic import Epidemic
+		env = Epidemic(gridLength=gridLength,
+						epsilon=0,
+						beta=beta,
+						CToI=0,
+						timeRemaining=timeRemaining,
+						rewardForC=True,
+						rewardForR=False,
+						initiallyCryptic=initiallyCryptic)
+		D = env.nHosts
+		nActions = env.nHosts + 1 # +1 for 'do nothing'.
+	else:
+		raise ValueError("environment must be epidemic or cartpole.")
 
 	tf.reset_default_graph()
 	# Define policy network placeholders.
@@ -113,13 +124,13 @@ def main(argv):
 				this_val_from_network = sess.run(estimated_value,
 							feed_dict={observations_placeholder: x})
 			action, y = getAction(tflogits)
+			# step the environment and get new measurements
+			observation, thisReward, done, info = env.step(action)
 
 			xs.append(x) # observation
 			ys.append(action)
-
-			# step the environment and get new measurements
-			observation, thisReward, done, info = env.step(action)
 			rewards.append(thisReward) # record reward (has to be done after we call step() to get reward for previous action)
+
 			if useValueNetwork:
 				# this_val_from_network is like [[something]].
 				vals_from_network.append(this_val_from_network[0][0])
@@ -157,6 +168,7 @@ def main(argv):
 						discountedRewardStdev = np.sqrt(np.var(all_discounted_rewards))
 						if discountedRewardStdev == 0:
 							Warning("Discounted rewards were all same for this batch - can't learn.")
+							print("Discounted rewards were all same for this batch - can't learn.")
 							canLearn = False
 						else:
 							all_advantages = (all_discounted_rewards - discountedRewardMean) / discountedRewardStdev
@@ -170,8 +182,9 @@ def main(argv):
 							thisValueTrain, thisValueLoss = sess.run([value_train_op, value_loss],
 								feed_dict={observations_placeholder: np.vstack(xs),
 										advantages_placeholder: np.vstack(all_discounted_rewards)})
+					print("\n============= END OF BATCH ============")
 					if verbose:
-						print("\n============= END OF BATCH ============")
+						print("All discounted rewards: ", all_discounted_rewards)
 						print("Advantages: ", all_advantages)
 						print("Last observation: ", x)
 						print("Logits before softmax were: ", tflogits)
@@ -181,6 +194,7 @@ def main(argv):
 						tflogitsWouldBe = sess.run(logits,
 							feed_dict={observations_placeholder: x})
 						print("Now probabilities would be: ", softmax(tflogitsWouldBe[0]))
+					print("Average discounted reward in batch: ", np.mean(all_discounted_rewards))
 					# Reset the arrays.
 					xs, ys = [],[] # reset array memory
 					rewards = []
@@ -190,14 +204,16 @@ def main(argv):
 					all_discounted_rewards = []
 					all_advantages = []
 					# Give a summary of how well our network is doing for each batch of episodes.
-					if not verbose:
-						print('Ep %i/%i' % (episode_number, total_episodes))
+				if not verbose:
+					print('Ep %i/%i' % (episode_number, total_episodes))
 
 				observation = env.reset()
 
-		print(episode_number,'Episodes completed.')
-		# Run the trained model on a sample and save to a file.
-		observation = env.reset()
+		print("==========", episode_number,'EPISODES COMPLETED ==========')
+
+		print("Last observation: ", x)
+		print("Logits before softmax were: ", tflogits)
+		print("Probabilities for this were: ", softmax(tflogits[0]))
 
 if __name__ == "__main__":
 	  main(sys.argv[1:])
