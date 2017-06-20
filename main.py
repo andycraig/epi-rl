@@ -66,7 +66,7 @@ def main(argv):
 	advantages_placeholder = tf.placeholder(tf.float32,name="reward_signal")
 	# Set up policy network.
 	logits = 	policyNetwork.inference(observations_placeholder, nActions, layersPolicy)
-	loss =      policyNetwork.loss(logits, input_y_placeholder, advantages_placeholder) # Both?
+	loss =      policyNetwork.loss(logits, input_y_placeholder, advantages_placeholder, nActions) # Both?
 	train_op =  policyNetwork.training(loss, learning_rate)
 	if useValueNetwork:
 		# Set up value network placeholders.

@@ -21,10 +21,9 @@ def inference(observation, nActions, H): # 'Inference' in the sense of 'predicti
 		logits = tf.matmul(layers[-1],W[-1])
 	return logits
 
-def loss(logits, input_y, advantages):
+def loss(logits, input_y, advantages, nActions):
 	#From here we define the parts of the network needed for learning a good policy.
-	cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=input_y, logits=logits)
-	loglik = tf.log(tf.reduce_sum(cross_entropy))
+	loglik = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=input_y)
 	loss = -tf.reduce_mean(loglik * advantages)
 	return loss
 
