@@ -17,8 +17,8 @@ def main(argv):
 	# hyperparameters that can be set with command line arguments.
 	gridLength = 2
 	graphics = False
-	total_episodes = 10000
-	timeRemaining = 5
+	total_episodes = 1000
+	timeRemaining = 1
 	batch_size = 5 # every how many episodes to do a param update?
 	beta = 0
 	initiallyCryptic = False
@@ -63,7 +63,7 @@ def main(argv):
 						CToI=0,
 						timeRemaining=timeRemaining,
 						rewardForC=True,
-						rewardForR=False,
+						rewardForR=True,
 						initiallyCryptic=initiallyCryptic)
 		D = env.nHosts
 		nActions = env.nHosts + 1 # +1 for 'do nothing'.
@@ -93,7 +93,7 @@ def main(argv):
 	if useValueNetwork:
 		vals_from_network = []
 		all_discounted_vals_from_network = np.array([])
-	episode_number = 0
+	episode_number = 1
 	init = tf.global_variables_initializer()
 
 	# Launch the graph
@@ -111,8 +111,7 @@ def main(argv):
 			print("Logits before softmax were: ", tflogits)
 			print("Probabilities for this were: ", softmax(tflogits[0]))
 
-		while episode_number < total_episodes:
-			episode_number += 1
+		while episode_number <= total_episodes:
 
 			# Make sure the observation is in a shape the network can handle.
 			x = np.reshape(observation,[1,D])
@@ -161,17 +160,23 @@ def main(argv):
 
 				# If we have completed enough episodes, then update the policy network with our gradients.
 				if episode_number % batch_size == 0:
+					print("\n============= END OF BATCH ============")
 
 					canLearn = True
 					if not useValueNetwork:
-						discountedRewardMean = np.mean(all_discounted_rewards)
-						discountedRewardStdev = np.sqrt(np.var(all_discounted_rewards))
-						if discountedRewardStdev == 0:
-							Warning("Discounted rewards were all same for this batch - can't learn.")
-							print("Discounted rewards were all same for this batch - can't learn.")
-							canLearn = False
+						if batch_size == 1 and environment == "epidemic":
+							Warning("Batch size is 1; will not normalise and learning not likely")
+							print("Batch size is 1; will not normalise and learning not likely")
+							discountedRewardMean = 0
+							discountedRewardStdev = 1
 						else:
-							all_advantages = (all_discounted_rewards - discountedRewardMean) / discountedRewardStdev
+							discountedRewardMean = np.mean(all_discounted_rewards)
+							discountedRewardStdev = np.sqrt(np.var(all_discounted_rewards))
+							if discountedRewardStdev == 0:
+								Warning("Discounted rewards were all same for this batch - can't learn.")
+								print("Discounted rewards were all same for this batch - can't learn.")
+								canLearn = False
+						all_advantages = (all_discounted_rewards - discountedRewardMean) / discountedRewardStdev
 					# Was: sess.run(updateGrads,feed_dict={W1Grad: gradBuffer[0],W2Grad:gradBuffer[1]})
 					if canLearn:
 						thisPolicyTrain, thisPolicyLoss = sess.run([train_op, loss],
@@ -182,17 +187,18 @@ def main(argv):
 							thisValueTrain, thisValueLoss = sess.run([value_train_op, value_loss],
 								feed_dict={observations_placeholder: np.vstack(xs),
 										advantages_placeholder: np.vstack(all_discounted_rewards)})
-					print("\n============= END OF BATCH ============")
 					if verbose:
 						print("All discounted rewards: ", all_discounted_rewards)
 						print("Advantages: ", all_advantages)
-						print("Last observation: ", x)
-						print("Logits before softmax were: ", tflogits)
-						print("Probabilities for this were: ", softmax(tflogits[0]))
+						print("Observations were: ", xs)
+						print("Actions were: ", ys)
 						if useValueNetwork:
 							print("Estimated value was: ", this_val_from_network[0][0])
 						tflogitsWouldBe = sess.run(logits,
 							feed_dict={observations_placeholder: x})
+						print("Logits before softmax were: ", tflogits)
+						print("Now logits before softmax would be: ", tflogitsWouldBe)
+						print("Probabilities for this were: ", softmax(tflogits[0]))
 						print("Now probabilities would be: ", softmax(tflogitsWouldBe[0]))
 					print("Average discounted reward in batch: ", np.mean(all_discounted_rewards))
 					# Reset the arrays.
@@ -208,10 +214,14 @@ def main(argv):
 					print('Ep %i/%i' % (episode_number, total_episodes))
 
 				observation = env.reset()
+				episode_number += 1
 
 		print("==========", episode_number,'EPISODES COMPLETED ==========')
 
-		print("Last observation: ", x)
+		observation = env.reset() # Obtain an initial observation of the environment
+		x = np.reshape(observation,[1,D])
+		print("Random observation: ", x)
+		tflogits = sess.run(logits, feed_dict={observations_placeholder: x})
 		print("Logits before softmax were: ", tflogits)
 		print("Probabilities for this were: ", softmax(tflogits[0]))
 
