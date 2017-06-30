@@ -26,11 +26,12 @@ def main(argv):
 	layersPolicy = [5] # An element for each layer, with each element the number of nodes in the layer.
 	layersValue = [5]
 	useValueNetwork = False
+	useAdvantageOracle = False
 	environment = "epidemic"
 	opts, args = getopt.getopt(argv,"e:h:n:t:b:g",
 									["environment=","hostlength=","nepisodes=",
 									"timeremaining=","batchsize=",
-									"beta=","initiallyc","verbose","valuenetwork"])
+									"beta=","initiallyc","verbose","valuenetwork","cheat"])
 	for opt, arg in opts:
 		if opt in ("-h", "--hostlength"):
 			gridLength = int(arg)
@@ -50,6 +51,9 @@ def main(argv):
 			verbose = True
 		elif opt in ("--valuenetwork"):
 			useValueNetwork = True
+		elif opt in ("--cheat"):
+			useAdvantageOracle = True
+			timeRemaining = 1
 	# Epidemic version.
 	if environment == "cartpole":
 		env = gym.make("CartPole-v0")
@@ -106,7 +110,7 @@ def main(argv):
 		if verbose:
 			tflogits = sess.run(logits,
 							feed_dict={observations_placeholder: x})
-			print("\n============= |BEFORE TRAINING ============")
+			print("\n============= BEFORE TRAINING ============")
 			print("Example observation: ", x)
 			print("Logits before softmax were: ", tflogits)
 			print("Probabilities for this were: ", softmax(tflogits[0]))
@@ -171,12 +175,22 @@ def main(argv):
 							discountedRewardStdev = 1
 						else:
 							discountedRewardMean = np.mean(all_discounted_rewards)
-							discountedRewardStdev = np.sqrt(np.var(all_discounted_rewards))
+							discountedRewardStdev = 1
+							#discountedRewardStdev = np.sqrt(np.var(all_discounted_rewards))
 							if discountedRewardStdev == 0:
 								Warning("Discounted rewards were all same for this batch - can't learn.")
 								print("Discounted rewards were all same for this batch - can't learn.")
 								canLearn = False
-						all_advantages = (all_discounted_rewards - discountedRewardMean) / discountedRewardStdev
+						calculated_all_advantages = (all_discounted_rewards - discountedRewardMean) / discountedRewardStdev
+						if timeRemaining == 1:
+							oracleDiscountedRewardMean = 1.0 / env.nHosts + (env.nHosts - 1)**2 / ((env.nHosts)**2)
+							pracleDiscountedRewardStdev = 1
+							canLearn = True
+							oracle_all_advantages = (all_discounted_rewards - oracleDiscountedRewardMean) / pracleDiscountedRewardStdev
+						if useAdvantageOracle:
+							all_advantages = oracle_all_advantages
+						else:
+							all_advantages = calculated_all_advantages
 					# Was: sess.run(updateGrads,feed_dict={W1Grad: gradBuffer[0],W2Grad:gradBuffer[1]})
 					if canLearn:
 						thisPolicyTrain, thisPolicyLoss = sess.run([train_op, loss],
@@ -189,7 +203,10 @@ def main(argv):
 										advantages_placeholder: np.vstack(all_discounted_rewards)})
 					if verbose:
 						print("All discounted rewards: ", all_discounted_rewards)
-						print("Advantages: ", all_advantages)
+						print("Discounted reward mean: ", discountedRewardMean)
+						print("Discounted reward std dev: ", discountedRewardStdev)
+						print("Calculated advantages: ", calculated_all_advantages)
+						print("Oracle advantages: ", oracle_all_advantages)
 						print("Observations were: ", xs)
 						print("Actions were: ", ys)
 						if useValueNetwork:
