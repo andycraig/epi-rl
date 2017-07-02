@@ -25,7 +25,7 @@ def loss(logits, input_y, advantages, nActions):
 	#From here we define the parts of the network needed for learning a good policy.
 	loglik = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=input_y)
 	# GOT RID OF MINUS IN FRONT OF NEXT LINE
-	loss = tf.reduce_mean(loglik * advantages)
+	loss = tf.reduce_sum(loglik * advantages)
 	return loss
 
 def training(loss, learning_rate):
