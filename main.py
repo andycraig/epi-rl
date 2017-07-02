@@ -6,6 +6,7 @@ import tensorflow as tf
 import math
 import sys
 import getopt
+import datetime
 from utils import getAction, discount_rewards, output, softmax
 import policyNetwork, valueNetwork
 
@@ -103,6 +104,10 @@ def main(argv):
 	# Launch the graph
 	with tf.Session() as sess:
 		sess.run(init)
+		# TensorBoard setup for reporting.
+		summary_merged = tf.summary.merge_all()
+		summaryDir = 'summary/' + str(datetime.datetime.now()).replace(":", "-")
+		summary_writer = tf.summary.FileWriter(summaryDir, sess.graph)
 
 		observation = env.reset() # Obtain an initial observation of the environment
 		x = np.reshape(observation,[1,D])
@@ -193,7 +198,7 @@ def main(argv):
 							all_advantages = calculated_all_advantages
 					# Was: sess.run(updateGrads,feed_dict={W1Grad: gradBuffer[0],W2Grad:gradBuffer[1]})
 					if canLearn:
-						thisPolicyTrain, thisPolicyLoss = sess.run([train_op, loss],
+						summary, thisPolicyTrain, thisPolicyLoss = sess.run([summary_merged, train_op, loss],
 							feed_dict={observations_placeholder: np.vstack(xs),
 									input_y_placeholder: ys,
 									advantages_placeholder: np.vstack(all_advantages)})
@@ -201,6 +206,9 @@ def main(argv):
 							thisValueTrain, thisValueLoss = sess.run([value_train_op, value_loss],
 								feed_dict={observations_placeholder: np.vstack(xs),
 										advantages_placeholder: np.vstack(all_discounted_rewards)})
+					# TensorBoard reporting.
+					summary_writer.add_summary(summary, episode_number)
+					# Console output if required.
 					if verbose:
 						print("All discounted rewards: ", all_discounted_rewards)
 						print("Discounted reward mean: ", discountedRewardMean)
