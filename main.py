@@ -98,6 +98,9 @@ def main(argv):
 	if useValueNetwork:
 		vals_from_network = []
 		all_discounted_vals_from_network = np.array([])
+	summaryDiscountedRewardMean = tf.Variable(0)
+	tf.summary.scalar("summaryDiscountedRewardMean", summaryDiscountedRewardMean)
+
 	episode_number = 1
 	init = tf.global_variables_initializer()
 
@@ -189,13 +192,16 @@ def main(argv):
 						calculated_all_advantages = (all_discounted_rewards - discountedRewardMean) / discountedRewardStdev
 						if timeRemaining == 1:
 							oracleDiscountedRewardMean = 1.0 / env.nHosts + (env.nHosts - 1)**2 / ((env.nHosts)**2)
-							pracleDiscountedRewardStdev = 1
+							oracleDiscountedRewardStdev = 1
 							canLearn = True
-							oracle_all_advantages = (all_discounted_rewards - oracleDiscountedRewardMean) / pracleDiscountedRewardStdev
+							oracle_all_advantages = (all_discounted_rewards - oracleDiscountedRewardMean) / oracleDiscountedRewardStdev
 						if useAdvantageOracle:
 							all_advantages = oracle_all_advantages
 						else:
 							all_advantages = calculated_all_advantages
+					s = sess.run(summaryDiscountedRewardMean, feed_dict={summaryDiscountedRewardMean:discountedRewardMean})
+					print("summaryDiscountedRewardMean: ", s)
+					print("discountedRewardMean: ", discountedRewardMean)
 					# Was: sess.run(updateGrads,feed_dict={W1Grad: gradBuffer[0],W2Grad:gradBuffer[1]})
 					if canLearn:
 						summary, thisPolicyTrain, thisPolicyLoss = sess.run([summary_merged, train_op, loss],
