@@ -174,25 +174,17 @@ def main(argv):
 
 					canLearn = True
 					if not useValueNetwork:
-						if batch_size == 1 and environment == "epidemic":
-							Warning("Batch size is 1; will not normalise and learning not likely")
-							print("Batch size is 1; will not normalise and learning not likely")
-							discountedRewardMean = 0
-							discountedRewardStdev = 1
-						else:
-							discountedRewardMean = np.mean(all_discounted_rewards)
-							discountedRewardStdev = 1
-							#discountedRewardStdev = np.sqrt(np.var(all_discounted_rewards))
-							if discountedRewardStdev == 0:
-								Warning("Discounted rewards were all same for this batch - can't learn.")
-								print("Discounted rewards were all same for this batch - can't learn.")
-								canLearn = False
-						calculated_all_advantages = (all_discounted_rewards - discountedRewardMean) / discountedRewardStdev
+						discountedRewardMean = np.mean(all_discounted_rewards)
+						calculated_all_advantages = (all_discounted_rewards - discountedRewardMean)
+						#discountedRewardStdev = np.sqrt(np.var(all_discounted_rewards))
+						if np.var(all_discounted_rewards) == 0:
+							Warning("Discounted rewards were all same for this batch - can't learn.")
+							print("Discounted rewards were all same for this batch - can't learn.")
+							canLearn = False
 						if timeRemaining == 1:
 							oracleDiscountedRewardMean = 1.0 / env.nHosts + (env.nHosts - 1)**2 / ((env.nHosts)**2)
-							oracleDiscountedRewardStdev = 1
 							canLearn = True
-							oracle_all_advantages = (all_discounted_rewards - oracleDiscountedRewardMean) / oracleDiscountedRewardStdev
+							oracle_all_advantages = (all_discounted_rewards - oracleDiscountedRewardMean)
 						if useAdvantageOracle:
 							all_advantages = oracle_all_advantages
 						else:
@@ -202,7 +194,7 @@ def main(argv):
 						summary, thisPolicyTrain, thisPolicyLoss = sess.run([summary_merged, train_op, loss],
 							feed_dict={observations_placeholder: np.vstack(xs),
 									input_y_placeholder: ys,
-									advantages_placeholder: np.vstack(all_advantages)})
+									advantages_placeholder: all_advantages})
 						if useValueNetwork:
 							thisValueTrain, thisValueLoss = sess.run([value_train_op, value_loss],
 								feed_dict={observations_placeholder: np.vstack(xs),
@@ -212,14 +204,14 @@ def main(argv):
 					summary_writer.add_summary(summary, episode_number)
 					# Non-graph variables.
 					nongraph_summary = tf.Summary(value=[tf.Summary.Value(tag="discountedRewardMean", simple_value=discountedRewardMean)])
-					# Console output if required.
 					summary_writer.add_summary(nongraph_summary, episode_number)
+					# Console output if required.
 					if verbose:
 						print("All discounted rewards: ", all_discounted_rewards)
 						print("Discounted reward mean: ", discountedRewardMean)
-						print("Discounted reward std dev: ", discountedRewardStdev)
 						print("Calculated advantages: ", calculated_all_advantages)
 						print("Oracle advantages: ", oracle_all_advantages)
+						print("Used advantages: ", all_advantages)
 						print("Observations were: ", xs)
 						print("Actions were: ", ys)
 						if useValueNetwork:

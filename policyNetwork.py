@@ -24,11 +24,14 @@ def inference(observation, nActions, H): # 'Inference' in the sense of 'predicti
 def loss(logits, input_y, advantages, nActions):
 	#From here we define the parts of the network needed for learning a good policy.
 	with tf.name_scope('loss'):
+		tf.summary.histogram('advantages', advantages)
 		loglik = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=input_y)
 		tf.summary.histogram('loglik', loglik)
+		lossUnreduced = tf.multiply(loglik, advantages)
+		tf.summary.histogram('lossUnreduced', lossUnreduced)
 		#tf.summary.scalar('loglik', loglik)
 	# GOT RID OF MINUS IN FRONT OF NEXT LINE
-		loss = tf.reduce_sum(loglik * advantages)
+		loss = tf.reduce_sum(lossUnreduced)
 		tf.summary.scalar('loss', loss)
 	return loss
 
