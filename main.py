@@ -98,8 +98,6 @@ def main(argv):
 	if useValueNetwork:
 		vals_from_network = []
 		all_discounted_vals_from_network = np.array([])
-	summaryDiscountedRewardMean = tf.Variable(0)
-	tf.summary.scalar("summaryDiscountedRewardMean", summaryDiscountedRewardMean)
 
 	episode_number = 1
 	init = tf.global_variables_initializer()
@@ -199,9 +197,6 @@ def main(argv):
 							all_advantages = oracle_all_advantages
 						else:
 							all_advantages = calculated_all_advantages
-					s = sess.run(summaryDiscountedRewardMean, feed_dict={summaryDiscountedRewardMean:discountedRewardMean})
-					print("summaryDiscountedRewardMean: ", s)
-					print("discountedRewardMean: ", discountedRewardMean)
 					# Was: sess.run(updateGrads,feed_dict={W1Grad: gradBuffer[0],W2Grad:gradBuffer[1]})
 					if canLearn:
 						summary, thisPolicyTrain, thisPolicyLoss = sess.run([summary_merged, train_op, loss],
@@ -213,8 +208,12 @@ def main(argv):
 								feed_dict={observations_placeholder: np.vstack(xs),
 										advantages_placeholder: np.vstack(all_discounted_rewards)})
 					# TensorBoard reporting.
+					# Graph variables
 					summary_writer.add_summary(summary, episode_number)
+					# Non-graph variables.
+					nongraph_summary = tf.Summary(value=[tf.Summary.Value(tag="discountedRewardMean", simple_value=discountedRewardMean)])
 					# Console output if required.
+					summary_writer.add_summary(nongraph_summary, episode_number)
 					if verbose:
 						print("All discounted rewards: ", all_discounted_rewards)
 						print("Discounted reward mean: ", discountedRewardMean)
