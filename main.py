@@ -246,6 +246,10 @@ def main(argv):
 		tflogits = sess.run(logits, feed_dict={observations_placeholder: x})
 		print("Logits before softmax were: ", tflogits)
 		print("Probabilities for this were: ", softmax(tflogits[0]))
+		# Write some output to a file.
+		outputExampleFile = "sampleEpidemic.txt"
+		output(env, logits, observations_placeholder, outputExampleFile, sess)
+		print("Wrote some example epidemics to ", outputExampleFile)
 
 if __name__ == "__main__":
 	  main(sys.argv[1:])

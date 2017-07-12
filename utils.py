@@ -41,24 +41,20 @@ def getAction(logits):
 		print("ValueError! y was ", y)
 	return action, y
 
-def output(env, probability, observations_placeholder, fileName, sess):
-	observation = env.reset()
-	done = False
+def output(env, logits, observations_placeholder, fileName, sess):
 	with open(fileName, "w") as f:
-		for iOutput in range(1):
-			while not done:
-				f.write(str(env))
-				print(str(env))
-				x = np.reshape(observation,[1,len(observation)])
-				tfprob = sess.run(probability,feed_dict={observations_placeholder: x})
-				f.write(str(np.reshape(tfprob[0][0:env.nHosts], [env.gridLength, env.gridLength])))
-				print(str(np.reshape(tfprob[0][0:env.nHosts], [env.gridLength, env.gridLength])))
-				f.write("Prob. of no action: " + str(tfprob[0][-1]))
-				print("Prob. of no action: " + str(tfprob[0][-1]))
-				action, y = getAction(tfprob)
-				f.write("Took action: " + str(action))
-				print("Took action: " + str(action))
-				observation, reward, done, info = env.step(action)
-				f.write("Got reward: " + str(reward))
-				print("Got reward: " + str(reward))
+		for iOutput in range(2):
 			observation = env.reset()
+			done = False
+			f.write(" ====== EXAMPLE RUN " + str(iOutput) + " ======\n")
+			while not done:
+				f.write("\n" + str(env))
+				# Get observation and choose action.
+				x = np.reshape(observation,[1,len(observation)])
+				tflogits = sess.run(logits,feed_dict={observations_placeholder: x})
+				action, y = getAction(tflogits)
+				f.write("Took action: " + str(action) + "\n")
+				observation, reward, done, info = env.step(action)
+				f.write("Got reward: " + str(reward) + "\n")
+			observation = env.reset()
+			f.write("\n\n")
